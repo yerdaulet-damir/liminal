@@ -1,0 +1,35 @@
+# Dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local runtime state
+.partykit/
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
+
+# Browser and test artifacts
+.playwright-mcp/
+playwright-report/
+test-results/
+coverage/
+shot-*.png
+shot-*.jpg
+shot-*.jpeg
+
+# Private agent configuration and internal working documents
+.claude/
+.codex/
+.agents/
+AGENTS.md
+CLAUDE.md
+docs/
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
+*.log

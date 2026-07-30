@@ -1,0 +1,9 @@
+{
+  "$schema": "https://www.partykit.io/schema.json",
+  "name": "liminal",
+  "main": "src/room.ts",
+  "parties": {
+    "matchmaking": "src/matchmaking/server.ts"
+  },
+  "compatibilityDate": "2024-11-01"
+}

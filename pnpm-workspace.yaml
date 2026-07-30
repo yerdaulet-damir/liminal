@@ -1,0 +1,8 @@
+packages:
+  - shared
+  - party
+  - client
+
+onlyBuiltDependencies:
+  - esbuild
+  - workerd

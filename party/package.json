@@ -1,0 +1,20 @@
+{
+  "name": "party",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "partykit dev",
+    "deploy": "partykit deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@liminal/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "partykit": "^0.0.111",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

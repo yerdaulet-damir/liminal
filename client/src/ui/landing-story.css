@@ -1,0 +1,150 @@
+.story,
+.faq {
+  padding: clamp(84px, 12vw, 174px) clamp(22px, 7vw, 108px);
+}
+
+.story {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.85fr) minmax(360px, 1.15fr);
+  gap: 7vw;
+  background: #17180f;
+  color: #e8e2c9;
+}
+
+.story__eyebrow {
+  margin: 0 0 23px;
+  color: #9e9a6c;
+}
+
+.story__lead h2,
+.faq h2 {
+  max-width: 760px;
+  margin: 0;
+  font-family: inherit;
+  font-size: clamp(42px, 5.5vw, 78px);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.95;
+}
+
+.story__lead > p:last-child {
+  max-width: 490px;
+  margin: 32px 0 0;
+  color: #aaa691;
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.story__levels {
+  border-top: 1px solid #4c4c36;
+}
+
+.story__level {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 22px;
+  padding: 26px 0;
+  border-bottom: 1px solid #4c4c36;
+}
+
+.story__level > span {
+  padding-top: 5px;
+  color: #9e9a6c;
+  font-family: inherit;
+  font-style: italic;
+}
+
+.story__level h3,
+.faq__grid h3 {
+  margin: 0 0 7px;
+  font-size: 18px;
+}
+
+.story__level p,
+.faq__grid p {
+  margin: 0;
+  color: #9f9b87;
+  line-height: 1.55;
+}
+
+.story__link {
+  grid-column: 2;
+  padding: 22px;
+  border: 1px solid #4c4c36;
+}
+
+.story__link p {
+  max-width: 520px;
+  margin: 11px 0 0;
+  line-height: 1.5;
+}
+
+.faq {
+  background: #11120c;
+}
+
+.faq h2 {
+  color: #e8e2c9;
+}
+
+.faq__grid {
+  display: block;
+  margin-top: 65px;
+  border-top: 1px solid #494838;
+}
+
+.faq__grid article {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1.2fr);
+  gap: clamp(24px, 6vw, 96px);
+  padding: 28px 0;
+  border-bottom: 1px solid #494838;
+}
+
+.faq__grid h3 {
+  color: #e8e2c9;
+}
+
+.faq__grid p {
+  color: #96917d;
+}
+
+.landing__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+  padding: 28px clamp(22px, 7vw, 108px);
+  border-top: 1px solid #333327;
+  background: #11120c;
+  color: #74715f;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.landing__footer p {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .story {
+    grid-template-columns: 1fr;
+    gap: 66px;
+  }
+
+  .story__link {
+    grid-column: auto;
+  }
+
+  .faq__grid {
+    margin-top: 42px;
+  }
+
+  .faq__grid article {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .landing__footer {
+    flex-direction: column;
+  }
+}

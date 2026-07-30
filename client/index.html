@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#11120d" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta
+      name="description"
+      content="Liminal is a free two-player browser horror game. Invite a friend or meet a random partner, then stay quiet because the monster hears your microphone."
+    />
+    <meta
+      name="keywords"
+      content="two player horror game, co-op horror browser game, multiplayer horror no download, liminal space game, online horror game with friends"
+    />
+    <link rel="canonical" href="__SITE_ORIGIN__/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" as="image" href="/liminal-key-art.webp" fetchpriority="high" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Liminal" />
+    <meta property="og:title" content="Liminal | Two-player browser horror" />
+    <meta
+      property="og:description"
+      content="Invite a friend or meet a random partner. Stay quiet. The creature hears footsteps and your real microphone loudness."
+    />
+    <meta property="og:url" content="__SITE_ORIGIN__/" />
+    <meta property="og:image" content="__SITE_ORIGIN__/liminal-key-art.webp" />
+    <meta property="og:image:width" content="1672" />
+    <meta property="og:image:height" content="940" />
+    <meta property="og:image:alt" content="Two players face a distant creature in an endless yellow office maze." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Liminal | Two-player browser horror" />
+    <meta
+      name="twitter:description"
+      content="A free co-op horror game in your browser. The creature hears footsteps and optional microphone loudness."
+    />
+    <meta name="twitter:image" content="__SITE_ORIGIN__/liminal-key-art.webp" />
+    <title>Liminal | Free two-player browser horror game</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "__SITE_ORIGIN__/#website",
+            "url": "__SITE_ORIGIN__/",
+            "name": "Liminal",
+            "description": "A free two-player cooperative horror game that runs in a web browser."
+          },
+          {
+            "@type": "VideoGame",
+            "@id": "__SITE_ORIGIN__/#game",
+            "url": "__SITE_ORIGIN__/",
+            "name": "Liminal",
+            "description": "Two players explore deterministic liminal mazes while a server-authoritative creature hunts footsteps, creaky floors, and optional microphone loudness.",
+            "image": "__SITE_ORIGIN__/liminal-key-art.webp",
+            "genre": ["Horror", "Cooperative", "Survival"],
+            "gamePlatform": "Web browser",
+            "playMode": "MultiPlayer",
+            "numberOfPlayers": {
+              "@type": "QuantitativeValue",
+              "value": 2
+            },
+            "isAccessibleForFree": true,
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD",
+              "availability": "https://schema.org/InStock",
+              "url": "__SITE_ORIGIN__/"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "__SITE_ORIGIN__/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Is Liminal free and does it require an installation?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Liminal is free for two players and runs directly in a modern web browser with no installation or account."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How many people can play Liminal?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Liminal is designed for two players. Invite one friend with a private link or use Quick Play to meet a random partner."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does Liminal record or transmit microphone audio?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Microphone audio is analyzed locally. The game sends only a clamped loudness value, and microphone access is optional."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+    <style>
+      :root { color-scheme: dark; }
+      html, body, #root { margin: 0; width: 100%; min-height: 100%; background: #11120d; }
+      body { overflow-x: hidden; }
+      * { box-sizing: border-box; }
+      .crawl-shell {
+        min-height: 100dvh;
+        padding: clamp(2rem, 7vw, 7rem);
+        color: #f2efdf;
+        background:
+          linear-gradient(90deg, rgba(12, 13, 9, 0.9), rgba(12, 13, 9, 0.28)),
+          url("/liminal-key-art.webp") center / cover;
+        font: 400 1rem/1.6 ui-sans-serif, system-ui, sans-serif;
+      }
+      .crawl-shell h1 { max-width: 13ch; font-size: clamp(2.8rem, 8vw, 7rem); line-height: 0.92; }
+      .crawl-shell p { max-width: 62ch; }
+      .crawl-shell section { max-width: 760px; margin-top: 4rem; }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <main class="crawl-shell">
+        <header>
+          <p>Free two-player browser horror</p>
+          <h1>Liminal: the creature hears you</h1>
+          <p class="crawl-summary">
+            Invite a friend or meet a random partner, find three keys, and cross three procedural liminal spaces.
+            Footsteps, creaky floors, and loud microphone input tell the creature where you are.
+          </p>
+        </header>
+        <section id="multiplayer">
+          <h2>How does multiplayer work?</h2>
+          <p>
+            Liminal is designed for two players. Invite one friend with a private link or use Quick
+            Play to meet a random partner. Both players share the same deterministic maze,
+            server-authoritative creature, level, and outcome.
+          </p>
+        </section>
+        <section id="microphone">
+          <h2>Does the monster hear real voices?</h2>
+          <p>
+            Microphone audio never leaves the device. The browser analyzes loudness locally and sends one
+            clamped value as optional game input. Denying microphone access never blocks play.
+          </p>
+        </section>
+        <section id="levels">
+          <h2>What happens in a run?</h2>
+          <p>
+            Search dead ends for three keys, avoid noisy floorboards, unlock a thin wall, and move from
+            The Lobby to The Warehouse and finally The Poolrooms.
+          </p>
+        </section>
+        <section id="faq" class="faq">
+          <h2>Frequently asked questions</h2>
+          <h3>Is it free and does it need an installation?</h3>
+          <p>It is free for two players and runs in a modern browser with no installation or account.</p>
+          <h3>How many people can play?</h3>
+          <p>The current game is designed for two players connected by private invite or Quick Play.</p>
+          <h3>Is microphone audio recorded or transmitted?</h3>
+          <p>No. Only a local loudness measurement is sent, and microphone access is optional.</p>
+        </section>
+      </main>
+    </div>
+    <script>
+      // dev-only: ?shim=1 keeps the render loop alive in hidden/headless tabs (rAF is
+      // suspended there) so automated screenshots work. No effect without the flag.
+      if (new URLSearchParams(location.search).has("shim")) {
+        window.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 16);
+      }
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+.game-shell {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: #0a0a08;
+}
+
+.game-shell > div:first-child,
+.game-shell canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
