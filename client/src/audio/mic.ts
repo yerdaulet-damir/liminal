@@ -9,32 +9,55 @@ let analyser: AnalyserNode | null = null;
 let data: Uint8Array<ArrayBuffer> | null = null;
 let mediaStream: MediaStream | null = null;
 let enabled = false;
+let requestVersion = 0;
+let pendingEnable: Promise<boolean> | null = null;
 
-/** Ask for the mic. Returns false if denied — the game plays on without it. */
-export async function enableMic(): Promise<boolean> {
-  if (enabled) return true;
+const stopStream = (stream: MediaStream | null): void => {
+  stream?.getTracks().forEach((track) => track.stop());
+};
+
+async function requestMic(version: number): Promise<boolean> {
+  let stream: MediaStream | null = null;
+  let audioContext: AudioContext | null = null;
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({
+    stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
     });
-    ctx = new AudioContext();
-    const src = ctx.createMediaStreamSource(mediaStream);
-    analyser = ctx.createAnalyser();
-    analyser.fftSize = 512;
-    data = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
-    src.connect(analyser);
+    if (version !== requestVersion) {
+      stopStream(stream);
+      return false;
+    }
+
+    audioContext = new AudioContext();
+    const src = audioContext.createMediaStreamSource(stream);
+    const nextAnalyser = audioContext.createAnalyser();
+    nextAnalyser.fftSize = 512;
+    src.connect(nextAnalyser);
+
+    mediaStream = stream;
+    ctx = audioContext;
+    analyser = nextAnalyser;
+    data = new Uint8Array(new ArrayBuffer(nextAnalyser.frequencyBinCount));
     enabled = true;
     return true;
   } catch {
-    mediaStream?.getTracks().forEach((track) => track.stop());
-    mediaStream = null;
-    ctx?.close().catch(() => undefined);
-    ctx = null;
-    analyser = null;
-    data = null;
-    enabled = false;
+    stopStream(stream);
+    audioContext?.close().catch(() => undefined);
     return false;
   }
+}
+
+/** Ask for the mic. Returns false if denied — the game plays on without it. */
+export function enableMic(): Promise<boolean> {
+  if (enabled) return Promise.resolve(true);
+  if (pendingEnable) return pendingEnable;
+
+  const request = requestMic(requestVersion);
+  pendingEnable = request.finally(() => {
+    if (pendingEnable === requestWithCleanup) pendingEnable = null;
+  });
+  const requestWithCleanup = pendingEnable;
+  return requestWithCleanup;
 }
 
 export const micEnabled = (): boolean => enabled;
@@ -54,7 +77,9 @@ export function micLoudness(): number {
 }
 
 export function disableMic(): void {
-  mediaStream?.getTracks().forEach((track) => track.stop());
+  requestVersion++;
+  pendingEnable = null;
+  stopStream(mediaStream);
   mediaStream = null;
   ctx?.close().catch(() => undefined);
   ctx = null;
