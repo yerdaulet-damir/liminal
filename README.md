@@ -37,7 +37,7 @@ are open right now, including yours.
 | `Shift` | Sprint (3.6 u/s, 3 s burst) | **loud** — it will come |
 | `C` | Crouch (0.9 u/s) | silent, but slow |
 | `F` | Flashlight (The Warehouse) | 90 s of battery, and it sees the beam |
-| `M` | Text chat | nothing — chat is free, talking is not |
+| `Tab` | Open or close text chat (`Enter` sends) | nothing — chat is free, talking is not |
 | `Esc` | Release the cursor | your dignity |
 
 **Only have one laptop?** Press **One laptop, two players**. The screen splits, and both halves

@@ -46,7 +46,7 @@ export function Hud({ room, seat = 0 }: { room: Room; seat?: number }) {
         <span style={S.dim}>
           {tank
             ? "walk over glowing keys · ↑↓ walk · ←→ turn · right-shift sprint · / crouch"
-            : "walk over glowing keys · m chat · shift sprint · c crouch · esc cursor"}
+            : "walk over glowing keys · tab chat · shift sprint · c crouch · esc cursor"}
         </span>
       </div>
       {room.phase === "playing" && !room.selfDown && !room.partnerDown && (

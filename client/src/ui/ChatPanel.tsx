@@ -7,11 +7,6 @@ interface ChatPanelProps {
   room: Pick<Room, "chatMessages" | "sendChat" | "welcome">;
 }
 
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
-}
-
 export function ChatPanel({ room }: ChatPanelProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -30,7 +25,7 @@ export function ChatPanel({ room }: ChatPanelProps) {
         setOpen(false);
         return;
       }
-      if (event.code !== "KeyM" || isTypingTarget(event.target)) return;
+      if (event.key !== "Tab") return;
       event.preventDefault();
       if (open) setOpen(false);
       else openChat();
@@ -57,16 +52,21 @@ export function ChatPanel({ room }: ChatPanelProps) {
 
   return (
     <aside className={`chat-panel ${open ? "chat-panel--open" : ""}`} aria-label="Session chat">
-      <button className="chat-panel__toggle" type="button" aria-expanded={open} onClick={openChat}>
+      <button
+        className="chat-panel__toggle"
+        type="button"
+        aria-expanded={open}
+        onClick={() => (open ? setOpen(false) : openChat())}
+      >
         <span aria-hidden="true">⌁</span>
-        Chat · M
+        Chat · Tab
       </button>
       {open && (
         <div className="chat-panel__body">
           <div className="chat-panel__header">
             <span>Close-range channel</span>
             <button type="button" aria-label="Close chat" onClick={() => setOpen(false)}>
-              M / Esc
+              Tab / Esc
             </button>
           </div>
           <div className="chat-panel__messages" role="log" aria-live="polite" aria-relevant="additions">
