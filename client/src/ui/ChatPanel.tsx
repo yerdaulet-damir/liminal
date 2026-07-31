@@ -100,6 +100,11 @@ export function ChatPanel({ room }: ChatPanelProps) {
               placeholder="Say something…"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+                event.preventDefault();
+                submit();
+              }}
             />
             <button type="submit" aria-label="Send message" disabled={!draft.trim()}>
               Send
