@@ -6,7 +6,7 @@
     { "path": "audio/roar.mp3", "source": "Freesound 444445", "license": "CC0-1.0", "sourceUrl": "https://freesound.org/s/444445/" },
     { "path": "audio/scream.mp3", "source": "Freesound 262884", "license": "CC0-1.0", "sourceUrl": "https://freesound.org/s/262884/" },
     { "path": "audio/water.mp3", "source": "Freesound 861351", "license": "CC0-1.0", "sourceUrl": "https://freesound.org/s/861351/" },
-    { "path": "favicon.svg", "source": "Liminal contributors", "license": "MIT", "sourceUrl": "https://github.com/" },
+    { "path": "favicon.svg", "source": "Liminal contributors", "license": "MIT", "sourceUrl": "https://github.com/yerdaulet-damir/liminal/blob/main/client/public/favicon.svg" },
     { "path": "liminal-key-art.webp", "source": "Generated for Liminal with OpenAI image generation", "license": "MIT", "sourceUrl": "https://openai.com/policies/terms-of-use/" },
     { "path": "models/Door_1.glb", "source": "KayKit Dungeon Remastered", "license": "CC0-1.0", "sourceUrl": "https://kaylousberg.itch.io/kaykit-dungeon-remastered" },
     { "path": "models/Door_5.glb", "source": "KayKit Dungeon Remastered", "license": "CC0-1.0", "sourceUrl": "https://kaylousberg.itch.io/kaykit-dungeon-remastered" },
