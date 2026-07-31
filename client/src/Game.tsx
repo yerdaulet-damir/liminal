@@ -41,14 +41,19 @@ export function Game({ name, roomId, seat }: { name: string; roomId: string; sea
     prevLevel.current = room.level;
   }, [room.level]);
 
-  if (room.admissionError === "room-full") {
+  if (room.admissionError) {
     const lobbyUrl = new URL(location.href);
     lobbyUrl.searchParams.delete("room");
+    const errorMessage = room.admissionError === "room-full"
+      ? "this passage already has two players."
+      : room.admissionError === "session-invalid"
+        ? "this private session is no longer valid."
+        : "this passage restarted and closed safely.";
     return (
       <div style={connectStyle}>
-        <span>this passage already has two players.</span>
+        <span>{errorMessage}</span>
         <a style={retryStyle} href={`${lobbyUrl.pathname}${lobbyUrl.search}`}>
-          find another room
+          open a fresh room
         </a>
       </div>
     );
@@ -97,6 +102,10 @@ export function Game({ name, roomId, seat }: { name: string; roomId: string; sea
             level={level}
             seat={mySeat}
             sendMove={room.sendMove}
+            readAuthoritativeLit={() =>
+              room.stateRef.current?.players.find((player) => player.id === room.welcome?.selfId)
+                ?.lit ?? false
+            }
             frozen={room.phase !== "playing" || room.selfDown || falling}
             roundEnded={room.phase !== "playing"}
             unlocked={room.keysLeft.length === 0}

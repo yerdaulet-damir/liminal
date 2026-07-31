@@ -7,17 +7,18 @@ import { MIC_GATE } from "@liminal/shared";
 let ctx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
 let data: Uint8Array<ArrayBuffer> | null = null;
+let mediaStream: MediaStream | null = null;
 let enabled = false;
 
 /** Ask for the mic. Returns false if denied — the game plays on without it. */
 export async function enableMic(): Promise<boolean> {
   if (enabled) return true;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
+    mediaStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
     });
     ctx = new AudioContext();
-    const src = ctx.createMediaStreamSource(stream);
+    const src = ctx.createMediaStreamSource(mediaStream);
     analyser = ctx.createAnalyser();
     analyser.fftSize = 512;
     data = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
@@ -25,6 +26,12 @@ export async function enableMic(): Promise<boolean> {
     enabled = true;
     return true;
   } catch {
+    mediaStream?.getTracks().forEach((track) => track.stop());
+    mediaStream = null;
+    ctx?.close().catch(() => undefined);
+    ctx = null;
+    analyser = null;
+    data = null;
     enabled = false;
     return false;
   }
@@ -47,6 +54,8 @@ export function micLoudness(): number {
 }
 
 export function disableMic(): void {
+  mediaStream?.getTracks().forEach((track) => track.stop());
+  mediaStream = null;
   ctx?.close().catch(() => undefined);
   ctx = null;
   analyser = null;
