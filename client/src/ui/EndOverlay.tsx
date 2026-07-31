@@ -3,6 +3,7 @@
 import type React from "react";
 import { useState } from "react";
 import type { Room } from "../net/useRoom.js";
+import { createRoomId, roomUrl } from "./roomLinks.js";
 
 export function EndOverlay({ room }: { room: Room }) {
   const [shared, setShared] = useState(false);
@@ -10,7 +11,7 @@ export function EndOverlay({ room }: { room: Room }) {
   const won = room.phase === "won";
 
   const share = () => {
-    const url = `${location.origin}${location.pathname}?room=${Math.random().toString(36).slice(2, 8)}`;
+    const url = roomUrl(createRoomId());
     const text = won
       ? `we made it out of the backrooms. think you can? ${url}`
       : `it found us in the backrooms. avenge us: ${url}`;

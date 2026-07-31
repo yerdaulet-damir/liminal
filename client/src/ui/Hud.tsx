@@ -3,23 +3,23 @@
 
 import type React from "react";
 import { useEffect, useState } from "react";
-import { levelLore } from "@liminal/shared";
+import { FLASHLIGHT_S, levelLore } from "@liminal/shared";
 import type { Room } from "../net/useRoom.js";
 import { bindingFor } from "../player/inputScheme.js";
-import { flashlightFor } from "../player/flashlight.js";
 
 export function Hud({ room, seat = 0 }: { room: Room; seat?: number }) {
-  const flashlight = flashlightFor(seat);
   const tank = bindingFor(seat).tank; // the arrow-cluster seat has its own key legend
   const connected = !!room.welcome;
   const count = room.ids.length;
-  // poll the flashlight store (it lives outside React on purpose)
+  // Snapshots live in a ref to avoid a 20 Hz React render storm; sample them for the HUD only.
   const [, tick] = useState(0);
   useEffect(() => {
     const iv = setInterval(() => tick((n) => n + 1), 500);
     return () => clearInterval(iv);
   }, []);
-  const batteryPct = Math.round((flashlight.batteryS / 90) * 100);
+  const self = room.stateRef.current?.players.find((player) => player.id === room.welcome?.selfId);
+  const batteryRatio = (self?.flashlightS ?? FLASHLIGHT_S) / FLASHLIGHT_S;
+  const batteryPct = Math.round(Math.max(0, Math.min(1, batteryRatio)) * 100);
   return (
     <>
       <div style={S.wrap}>
@@ -37,7 +37,7 @@ export function Hud({ room, seat = 0 }: { room: Room; seat?: number }) {
         {room.level === 1 && (
           <>
             <span style={S.sep}>·</span>
-            <span style={{ color: flashlight.on ? "#f4e8a0" : "#6a6448" }}>
+            <span style={{ color: self?.lit ? "#f4e8a0" : "#6a6448" }}>
               🔦 {batteryPct}% ({tank ? "." : "F"})
             </span>
           </>

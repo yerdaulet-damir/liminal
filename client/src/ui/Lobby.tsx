@@ -2,24 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { useQuickPlay } from "../net/useQuickPlay.js";
 import { JoinPanel } from "./JoinPanel.js";
 import { LandingStory } from "./LandingStory.js";
+import { createRoomId, roomIdFromLocation, roomUrl } from "./roomLinks.js";
 import "./lobby.css";
 
 interface LobbyProps {
   onPlay: (name: string, roomId: string, couch?: boolean) => void;
 }
 
-function createRoomId(): string {
-  return Math.random().toString(36).slice(2, 8);
-}
-
-function roomUrl(roomId: string): string {
-  const url = new URL(location.href);
-  url.searchParams.set("room", roomId);
-  return url.toString();
-}
-
 export function Lobby({ onPlay }: LobbyProps) {
-  const existingRoom = new URLSearchParams(location.search).get("room");
+  const existingRoom = roomIdFromLocation();
   const [name, setName] = useState("");
   const [copied, setCopied] = useState(false);
   const quickPlay = useQuickPlay();
