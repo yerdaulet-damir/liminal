@@ -2,7 +2,7 @@
 
 > **Two players. One link. Something in the dark hears your microphone.**
 
-![Liminal landing page: two players with a flashlight face a distant creature in a yellow office corridor](docs/media/landing.jpg)
+![Liminal key art: two players with a flashlight face a distant creature in a yellow office corridor](client/public/liminal-key-art.webp)
 
 **Liminal is a free two-player cooperative horror game that runs entirely in a web browser.**
 No download, no account, no launcher. One player opens a private link or hits Quick Play; the
@@ -67,25 +67,17 @@ bearings, short enough that the quiet never becomes dead air.
 | **III** | **The Poolrooms** | White tile, shallow blue water, soft daylight from nowhere | **Nothing lives here.** Breathe. Find the last thin wall. |
 | **IV** | **The Dead Mall** | A skylit atrium, shuttered storefronts, dead food court, dry fountain, and service corridors | A mannequin moves only when nobody can see it. A wall or corner breaks your gaze. |
 
-![The Lobby: yellow partition walls, mustard carpet, fluorescent ceiling panels, a red nightstand, key counter showing 0 of 3](docs/media/lobby.jpg)
-
-![The Warehouse: near-total darkness, a flashlight cone on a concrete wall, two distant ceiling lights](docs/media/warehouse.jpg)
-
-![The Poolrooms: white tiled walls and pillars over shallow blue water, a key glowing in the distance](docs/media/poolrooms.jpg)
-
 ### The briefing
 
 Every room introduces itself. When you arrive, a card fades in with what this place is, what it
 wants from you, and the one rule that will get you killed if nobody says it out loud — then it
 gets out of the way. No tutorial popups, no "press E to continue": the fiction *is* the tutorial.
 
-The full survival guide, in the game's own voice, is in **[docs/LORE.md](docs/LORE.md)**. Its
-single source of truth is [`shared/src/lore.ts`](shared/src/lore.ts), which the landing page,
-the in-game briefings and the docs all read from — so the game cannot contradict itself.
+The survival guide's single source of truth is [`shared/src/lore.ts`](shared/src/lore.ts),
+which the landing page and in-game briefings both read from — so the game cannot contradict
+itself.
 
 ### The creature
-
-![The creature: a black quadruped silhouette crouched beside a floor lamp in the yellow lobby](docs/media/creature.jpg)
 
 One entity, owned entirely by the server tick, so both players always see it in the same place.
 Its brain is an Alien: Isolation-style director running at 15 Hz:
@@ -178,7 +170,9 @@ VITE_PUBLIC_ORIGIN=https://your-domain.example VITE_PARTY_HOST=<party>.<account>
 ```
 
 `VITE_PUBLIC_ORIGIN` is not optional — it feeds canonical URLs, Open Graph tags, and the three
-generated crawler files.
+generated crawler files. `VITE_PARTY_HOST` is also required in production. See the complete
+preflight, Cloudflare Pages configuration, smoke test, and rollback procedure in
+[`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 ### How search engines and AI assistants see this
 
@@ -229,7 +223,8 @@ client/          the thin edge
   audio/           hum, heartbeat, creature voice, microphone analysis
   ui/              landing, lobby, HUD, chat, outcome
 
-docs/            product, growth, monetization, gameplay research, decision log
+ASSETS.md        provenance and licenses for shipped media
+DEPLOYMENT.md    production preflight, deploy, smoke test, rollback
 ```
 
 ---
@@ -247,7 +242,18 @@ Everything shipped here is free and credited. No stock slop, no ripped assets.
 | Dead Mall terrazzo and shutter textures | Generated for this project with OpenAI image generation | Project asset |
 | Fluorescent hum, roar, breathing, scream, water | [freesound.org](https://freesound.org) | CC0 |
 
-Per-file attribution lives in [`client/public/textures/LICENSE.txt`](client/public/textures/LICENSE.txt).
+Per-file provenance lives in [`assets-manifest.json`](assets-manifest.json), with a human-readable
+guide in [`ASSETS.md`](ASSETS.md). The repository source is MIT licensed; bundled assets retain
+the per-file terms recorded there.
+
+---
+
+## Contributing and community
+
+Contributions are welcome. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md), follow the
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md), and report vulnerabilities privately as described
+in [`SECURITY.md`](SECURITY.md). The public data-handling statement is in
+[`PRIVACY.md`](PRIVACY.md).
 
 ---
 

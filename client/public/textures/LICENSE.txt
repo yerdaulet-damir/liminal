@@ -1,4 +1,0 @@
-CC0 ambientCG: Carpet009, OfficeCeiling005, Wallpaper001A; freesound 777053 hum (CC0)
-CC0 freesound: 777053 hum, 444445 roar, 262884 scream, 574208 breathing
-CC0: Tiles107, Tiles132A (ambientCG); freesound 861351 water
-Project assets: mall-terrazzo.webp and mall-shutter.webp generated with OpenAI image generation

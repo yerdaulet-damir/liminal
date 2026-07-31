@@ -1,0 +1,13 @@
+Liminal
+Copyright (c) 2026 Liminal contributors
+
+The source code and original project documentation are distributed under the
+MIT License in LICENSE.
+
+The game bundles third-party and generated visual and audio assets. Those files
+retain the licenses stated in ASSETS.md and assets-manifest.json; the repository
+MIT license does not replace those terms. All currently bundled third-party
+assets are identified as CC0 1.0 sources.
+
+Liminal is an independent liminal-space game and is not affiliated with an
+official Backrooms property.

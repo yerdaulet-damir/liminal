@@ -2,11 +2,21 @@
   "name": "liminal",
   "version": "0.0.0",
   "private": true,
+  "description": "Two-player server-authoritative browser horror game",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "concurrently -n party,client -c magenta,cyan \"pnpm --filter party dev\" \"pnpm --filter client dev\"",
+    "build": "pnpm --filter client build",
+    "check:assets": "node scripts/check-assets.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "verify:ci": "pnpm check:assets && pnpm check:secrets && pnpm audit --prod --audit-level=high && pnpm test && pnpm typecheck && pnpm build",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=22.14.0 <25",
+    "pnpm": "11.1.x"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
