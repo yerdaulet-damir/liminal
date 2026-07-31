@@ -1,23 +1,16 @@
-// Tiny module store for the flashlight so the HUD (outside the Canvas) can read battery
-// without prop-drilling through the scene graph. One entry per local seat — on a shared
-// laptop each player carries their own torch and their own battery.
-
-import { FLASHLIGHT_S } from "@liminal/shared";
-
-export interface FlashlightState {
-  on: boolean;
-  batteryS: number;
+// Local input intent only. The room owns whether the beam is actually lit and how
+// much battery remains; authoritative snapshots must never be written back here.
+export interface FlashlightIntent {
+  requested: boolean;
 }
 
-const seats: FlashlightState[] = [
-  { on: false, batteryS: FLASHLIGHT_S },
-  { on: false, batteryS: FLASHLIGHT_S },
+const seats: FlashlightIntent[] = [
+  { requested: false },
+  { requested: false },
 ];
 
-export const flashlightFor = (seat: number): FlashlightState => seats[seat] ?? seats[0]!;
+export const flashlightIntentFor = (seat: number): FlashlightIntent => seats[seat] ?? seats[0]!;
 
-export function resetFlashlight(seat: number): void {
-  const f = flashlightFor(seat);
-  f.on = false;
-  f.batteryS = FLASHLIGHT_S;
+export function resetFlashlightIntent(seat: number): void {
+  flashlightIntentFor(seat).requested = false;
 }

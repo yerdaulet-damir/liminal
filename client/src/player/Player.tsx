@@ -19,7 +19,7 @@ import {
 } from "@liminal/shared";
 import { setThinWallDistance } from "../audio/ambience.js";
 import { levelWorld } from "../scene/levelWorld.js";
-import { flashlightFor, resetFlashlight } from "./flashlight.js";
+import { flashlightIntentFor, resetFlashlightIntent } from "./flashlight.js";
 import { bindingFor, readSeatInput, TURN_RATE } from "./inputScheme.js";
 import { micLoudness } from "../audio/mic.js";
 
@@ -35,6 +35,7 @@ export function Player({
   level = 0,
   seat = 0,
   sendMove,
+  readAuthoritativeLit,
   frozen = false,
   roundEnded = false,
   unlocked = true,
@@ -46,6 +47,8 @@ export function Player({
   /** the wall only hums once the keys are found */
   unlocked?: boolean;
   sendMove: (x: number, z: number, ry: number, lit?: boolean, mic?: number) => void;
+  /** reads the latest server snapshot for this player; never predicted locally */
+  readAuthoritativeLit: () => boolean;
   /** blocks movement (round over OR you are down) */
   frozen?: boolean;
   /** true only between rounds — triggers the snap back to spawn on restart */
@@ -54,7 +57,7 @@ export function Player({
   const { camera } = useThree();
   const { maze, props } = useMemo(() => levelWorld(seed, level), [seed, level]);
   const binding = bindingFor(seat);
-  const flashlight = flashlightFor(seat);
+  const flashlight = flashlightIntentFor(seat);
   const keys = useRef<Record<string, boolean>>({});
   const pos = useRef({ x: maze.start.x, z: maze.start.z });
   const yaw = useRef(0);
@@ -65,12 +68,12 @@ export function Player({
     camera.position.set(maze.start.x, EYE_HEIGHT, maze.start.z);
     camera.lookAt(maze.start.x + 1, EYE_HEIGHT, maze.start.z + 1); // face into the maze, not a wall
     yaw.current = camera.rotation.y;
-    resetFlashlight(seat); // fresh battery each level (component remounts per level)
+    resetFlashlightIntent(seat);
     const down = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
       keys.current[e.code] = true;
-      if (e.code === binding.torch && level >= 1 && flashlight.batteryS > 0) {
-        flashlight.on = !flashlight.on;
+      if (e.code === binding.torch && level >= 1) {
+        flashlight.requested = !flashlight.requested;
       }
     };
     const up = (e: KeyboardEvent) => {
@@ -152,37 +155,30 @@ export function Player({
     );
     camera.position.set(next.x, EYE_HEIGHT, next.z);
 
-    // flashlight battery drains only while ON; dead battery snaps it off
-    if (flashlight.on) {
-      flashlight.batteryS = Math.max(0, flashlight.batteryS - dt);
-      if (flashlight.batteryS === 0) flashlight.on = false;
-    }
-
     sendAcc.current += dt;
     if (sendAcc.current >= TICK_MS / 1000) {
       sendAcc.current = 0;
-      sendMove(next.x, next.z, Math.atan2(dir.x, dir.z), flashlight.on, micLoudness());
+      sendMove(next.x, next.z, Math.atan2(dir.x, dir.z), flashlight.requested, micLoudness());
     }
   });
 
   return (
     <>
       {!binding.tank && <PointerLockControls />}
-      <Beam seat={seat} />
+      <Beam readAuthoritativeLit={readAuthoritativeLit} />
     </>
   );
 }
 
 // The flashlight beam — follows the camera, visible only when ON.
-function Beam({ seat }: { seat: number }) {
+function Beam({ readAuthoritativeLit }: { readAuthoritativeLit: () => boolean }) {
   const { camera } = useThree();
-  const flashlight = flashlightFor(seat);
   const light = useRef<THREE.SpotLight>(null);
   const target = useRef<THREE.Object3D>(null);
   const dir = useRef(new THREE.Vector3());
   useFrame(() => {
     if (!light.current || !target.current) return;
-    light.current.visible = flashlight.on;
+    light.current.visible = readAuthoritativeLit();
     light.current.position.copy(camera.position);
     camera.getWorldDirection(dir.current);
     target.current.position.copy(camera.position).addScaledVector(dir.current, 6);
