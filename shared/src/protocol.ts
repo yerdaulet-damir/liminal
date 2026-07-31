@@ -38,10 +38,19 @@ export interface ChatMessage {
 }
 
 export type Phase = "playing" | "won" | "lost";
+export type MovementMode = "walk" | "sprint" | "crouch";
 
 export type ClientMsg =
   | { t: "join"; name: string; lastVersion: number; resumeToken?: string }
-  | { t: "move"; x: number; z: number; ry: number; lit?: boolean; mic?: number }
+  | {
+      t: "move";
+      x: number;
+      z: number;
+      ry: number;
+      lit?: boolean;
+      mic?: number;
+      mode?: MovementMode;
+    }
   | { t: "grab"; id: number }
   | { t: "restart" }
   | { t: "chat"; text: string };
@@ -72,7 +81,8 @@ export type MatchClientMsg =
 export type MatchServerMsg =
   /** You are now the open game: anyone pressing Quick Play joins you. `waiting` includes you. */
   | { t: "match_waiting"; waiting: number }
-  | { t: "match_found"; roomId: string };
+  | { t: "match_found"; roomId: string }
+  | { t: "match_unavailable" };
 
 export type WireMsg = ClientMsg | ServerMsg | MatchClientMsg | MatchServerMsg;
 
@@ -88,6 +98,8 @@ const isRoomId = (value: unknown): value is string =>
   typeof value === "string" && /^[A-Za-z0-9_-]{20,128}$/.test(value);
 const isToken = (value: unknown): value is string =>
   typeof value === "string" && /^[A-Za-z0-9_-]{32,128}$/.test(value);
+const isMovementMode = (value: unknown): value is MovementMode =>
+  value === "walk" || value === "sprint" || value === "crouch";
 
 function decodeObject(raw: string, maxLength: number): JsonObject | null {
   if (raw.length > maxLength) return null;
@@ -191,8 +203,17 @@ export function parseClientMsg(raw: string): ClientMsg | null {
     };
   }
   if (data.t === "move" && isNum(data.x) && isNum(data.z) && isNum(data.ry)) {
+    if (data.mode !== undefined && !isMovementMode(data.mode)) return null;
     const mic = isNum(data.mic) ? Math.max(0, Math.min(1, data.mic)) : 0;
-    return { t: "move", x: data.x, z: data.z, ry: data.ry, lit: data.lit === true, mic };
+    return {
+      t: "move",
+      x: data.x,
+      z: data.z,
+      ry: data.ry,
+      lit: data.lit === true,
+      mic,
+      ...(isMovementMode(data.mode) ? { mode: data.mode } : {}),
+    };
   }
   if (data.t === "grab" && isNum(data.id)) return { t: "grab", id: Math.floor(data.id) };
   if (data.t === "restart") return { t: "restart" };
@@ -259,7 +280,7 @@ export function parseMatchServerMsg(raw: string): MatchServerMsg | null {
   if (data.t === "match_found" && isRoomId(data.roomId)) {
     return { t: "match_found", roomId: data.roomId };
   }
-  return null;
+  return data.t === "match_unavailable" ? { t: "match_unavailable" } : null;
 }
 
 export const encode = (message: WireMsg): string => JSON.stringify(message);

@@ -10,6 +10,8 @@ function makeRoomId(): string {
 
 export default class MatchmakingRoom implements Party.Server {
   private queue = new MatchQueue(makeRoomId);
+  private lastRejectionLogAt = 0;
+  private readonly lastLogAt = new Map<string, number>();
 
   constructor(readonly room: Party.Room) {}
 
@@ -28,22 +30,24 @@ export default class MatchmakingRoom implements Party.Server {
   async onMessage(raw: string, sender: Party.Connection): Promise<void> {
     const message = parseMatchClientMsg(raw);
     if (!message) {
-      this.log("match_message_rejected", { ticket: sender.id });
+      this.logRejection("match_message_rejected");
       return;
     }
+    const revision = this.queue.revision;
     if (message.t === "find_match") this.find(sender);
     if (message.t === "cancel_match") {
       this.queue.cancel(sender.id);
       this.announceWaiting();
     }
     if (message.t === "match_ack") this.queue.acknowledge(sender.id, message.roomId);
-    await this.persist();
+    if (this.queue.revision !== revision) await this.persist();
   }
 
   async onClose(connection: Party.Connection): Promise<void> {
+    const revision = this.queue.revision;
     this.queue.disconnect(connection.id);
     this.announceWaiting();
-    await this.persist();
+    if (this.queue.revision !== revision) await this.persist();
   }
 
   async onError(connection: Party.Connection): Promise<void> {
@@ -61,10 +65,16 @@ export default class MatchmakingRoom implements Party.Server {
       sender.send(encode({ t: "match_found", roomId: result.roomId }));
       return;
     }
+    if (result.kind === "rejected") {
+      sender.send(encode({ t: "match_unavailable" }));
+      sender.close(1013, "matchmaking busy");
+      this.logRejection("match_capacity_rejected");
+      return;
+    }
     for (const ticket of result.tickets) {
       this.room.getConnection(ticket)?.send(encode({ t: "match_found", roomId: result.roomId }));
     }
-    this.log("match_paired", { roomId: result.roomId });
+    this.logBounded("match_paired");
     this.announceWaiting();
   }
 
@@ -89,5 +99,20 @@ export default class MatchmakingRoom implements Party.Server {
 
   private log(event: string, details: Record<string, string>): void {
     console.info(JSON.stringify({ event, ...details }));
+  }
+
+  private logRejection(event: string): void {
+    const now = Date.now();
+    if (now - this.lastRejectionLogAt < 10_000) return;
+    this.lastRejectionLogAt = now;
+    this.log(event, {});
+  }
+
+  private logBounded(event: string): void {
+    const now = Date.now();
+    const last = this.lastLogAt.get(event) ?? -Infinity;
+    if (now - last < 10_000) return;
+    this.lastLogAt.set(event, now);
+    this.log(event, {});
   }
 }

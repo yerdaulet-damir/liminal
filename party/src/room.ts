@@ -1,37 +1,10 @@
 import type * as Party from "partykit/server";
 import {
-  CREAK_NOISE,
-  FLASHLIGHT_S,
-  MAX_MOVE_PER_TICK_FACTOR,
-  MIC_GATE,
-  SPRINT_SPEED,
-  PICKUP_DIST,
-  SPAWN_GRACE_S,
-  TICK_MS,
-  cellIndex,
-  creakyCells,
-  encode,
-  generateLevel,
-  hashSeed,
-  heardLoudness,
-  rawLoudness,
-  levelSeed,
-  makeDirector,
-  makeMonster,
-  makeRng,
-  parseClientMsg,
-  placeProps,
-  placeKeys,
-  type ClientMsg,
-  type KeyItem,
-  type Director,
-  type Maze,
-  type MonsterState,
-  type Phase,
-  type PlayerState,
-  type PropPlacement,
-  type Rng,
-  type ServerMsg,
+  FLASHLIGHT_S, MIC_GATE, PICKUP_DIST, SPAWN_GRACE_S, TICK_MS,
+  creakyCells, encode, generateLevel, hashSeed, levelSeed,
+  makeDirector, makeMonster, makeRng, parseClientMsg, placeKeys, placeProps,
+  type ClientMsg, type Director, type KeyItem, type Maze, type MonsterState,
+  type Phase, type PlayerState, type PropPlacement, type Rng, type ServerMsg,
 } from "@liminal/shared";
 import { ChatLedger } from "./chat.js";
 import { LAST_LEVEL, levelDef } from "./levels.js";
@@ -39,8 +12,10 @@ import { Outage } from "./outage.js";
 import { CommandQueue, type RoomCommand } from "./sim/commands.js";
 import { canNoclip, tickRevives } from "./sim/cooperation.js";
 import { Flashlights } from "./sim/flashlights.js";
-import { resolveAuthoritativeMove } from "./sim/movement.js";
+import { PlayerMovement } from "./sim/movement.js";
 import { tickMonsterEncounter } from "./sim/monsterEncounter.js";
+import { measurePlayerNoise } from "./sim/playerNoise.js";
+import { RoomLog } from "./sim/roomLog.js";
 import { admitJoin, expireDisconnected } from "./sim/roster.js";
 
 const DT = TICK_MS / 1000;
@@ -52,9 +27,7 @@ export default class GameRoom implements Party.Server {
   private readonly players = new Map<string, PlayerState>();
   private readonly prevPos = new Map<string, { x: number; z: number }>();
   private readonly mic = new Map<string, number>();
-  /** Where each client says it is. The tick decides how much of that it believes. */
-  private readonly wanted = new Map<string, { x: number; z: number }>();
-  /** Per-tick: how much of each player's noise actually reaches the creature. */
+  private readonly movement = new PlayerMovement();
   private readonly reaching = new Map<string, number>();
   private readonly seed: number;
   private readonly rng: Rng;
@@ -77,14 +50,17 @@ export default class GameRoom implements Party.Server {
   private readonly tokenByPlayer = new Map<string, string>();
   private readonly flashlights = new Flashlights();
   private readonly restartVotes = new Set<string>();
+  private readonly logger: RoomLog;
   private phase: Phase = "playing";
   private runS = 0;
   private tick = 0;
   private version = 0;
   private loop: ReturnType<typeof setInterval> | null = null;
   private unavailable = false;
+  private teardownStarted = false;
 
   constructor(readonly room: Party.Room) {
+    this.logger = new RoomLog();
     this.seed = hashSeed(room.id);
     this.rng = makeRng(this.seed ^ 0x9e3779b9); // director/wander rolls — seeded, replayable
     this.maze = generateLevel(levelSeed(this.seed, 0), 0);
@@ -116,11 +92,11 @@ export default class GameRoom implements Party.Server {
   onMessage(raw: string, sender: Party.Connection): void {
     const msg = parseClientMsg(raw);
     if (!msg) {
-      this.log("game_message_rejected", { connectionId: sender.id });
+      this.logger.rejection("game_message_rejected", this.tick);
       return;
     }
     if (!this.commands.enqueue({ kind: "message", senderId: sender.id, message: msg })) {
-      this.log("command_queue_full", { connectionId: sender.id });
+      this.logger.rejection("command_queue_full", this.tick);
     }
     this.ensureLoop();
   }
@@ -161,6 +137,11 @@ export default class GameRoom implements Party.Server {
         this.flashlights.add(admission.playerId);
         this.restartVotes.clear();
       }
+      if (admission) {
+        this.logger.bounded(admission.created ? "player_admitted" : "player_resumed", this.tick);
+      }
+      else this.logger.rejection("join_rejected", this.tick);
+      if (admission) this.clearPlayerTransient(admission.playerId);
       return;
     }
     const playerId = this.transportPlayers.get(senderId);
@@ -169,7 +150,7 @@ export default class GameRoom implements Party.Server {
     if (msg.t === "move") {
       if (this.phase !== "playing" || p.down) return;
       // position is a REQUEST, not a fact — the tick clamps it (see applyWantedPositions)
-      this.wanted.set(p.id, { x: msg.x, z: msg.z });
+      this.movement.request(p.id, { x: msg.x, z: msg.z }, msg.mode ?? "walk");
       p.ry = msg.ry;
       this.flashlights.request(p.id, msg.lit === true);
       this.mic.set(p.id, msg.mic ?? 0);
@@ -183,8 +164,8 @@ export default class GameRoom implements Party.Server {
     } else if (msg.t === "restart") {
       if (this.phase === "playing") return;
       this.restartVotes.add(p.id);
-      if (Array.from(this.players.keys()).every((id) => this.restartVotes.has(id))) {
-        this.phase = "playing";
+      if (Array.from(this.connections.keys()).every((id) => this.restartVotes.has(id))) {
+        this.setPhase("playing");
         this.runS = 0;
         this.enterLevel(0);
       }
@@ -196,13 +177,15 @@ export default class GameRoom implements Party.Server {
 
   private applyCommand(command: RoomCommand): void {
     if (command.kind === "connect") {
-      if (this.unavailable) {
+      if (this.unavailable || this.teardownStarted) {
         command.connection.send(encode({ t: "room_unavailable" }));
         command.connection.close(1012, "room instance unavailable");
+        this.logger.rejection("room_unavailable_rejected", this.tick);
         return;
       }
       if (this.pendingConnections.size >= MAX_PENDING_HANDSHAKES) {
         command.connection.close(1008, "handshake capacity exceeded");
+        this.logger.rejection("handshake_capacity_rejected", this.tick);
         return;
       }
       this.pendingConnections.set(command.connection.id, command.connection);
@@ -217,6 +200,8 @@ export default class GameRoom implements Party.Server {
       if (!playerId || this.connections.get(playerId) !== command.connection) return;
       this.connections.delete(playerId);
       this.disconnectedAt.set(playerId, this.tick);
+      this.clearPlayerTransient(playerId);
+      this.logger.bounded("player_disconnected", this.tick);
       return;
     }
     this.applyMessage(command.senderId, command.message);
@@ -224,12 +209,14 @@ export default class GameRoom implements Party.Server {
 
   private enterLevel(level: number): void {
     this.level = level;
+    this.logger.event("level_entered", { level });
     this.maze = generateLevel(levelSeed(this.seed, level), level);
     this.monster = makeMonster(this.maze.exit);
     this.director = makeDirector();
     this.outage.reset(this.rng);
     this.stockLevel(level);
     this.flashlights.reset(this.players.keys());
+    this.movement.reset(this.players.keys());
     this.restartVotes.clear();
     for (const p of this.players.values()) {
       p.x = this.maze.start.x;
@@ -266,8 +253,8 @@ export default class GameRoom implements Party.Server {
     });
     for (const id of expired) {
       this.flashlights.remove(id);
+      this.movement.remove(id);
       this.mic.delete(id);
-      this.wanted.delete(id);
       this.restartVotes.clear();
     }
     if (this.phase === "playing") this.simulate();
@@ -282,7 +269,21 @@ export default class GameRoom implements Party.Server {
       players: Array.from(this.players.values()),
       entity: { x: this.monster.x, z: this.monster.z, mood: this.director.mood },
     });
-    if (this.players.size === 0 && this.pendingConnections.size === 0 && this.commands.size === 0) {
+    if (this.players.size !== 0 || this.pendingConnections.size !== 0 || this.commands.size !== 0) return;
+    if (this.unavailable) this.stopLoop();
+    else void this.cleanTeardown();
+  }
+
+  private async cleanTeardown(): Promise<void> {
+    if (this.teardownStarted) return;
+    this.teardownStarted = true;
+    try {
+      await this.room.storage.delete(ROOM_INSTANCE_MARKER);
+      this.logger.event("room_clean_teardown");
+    } catch (error) {
+      this.logger.event("room_teardown_failed", { reason: String(error) });
+    } finally {
+      this.unavailable = true;
       this.stopLoop();
     }
   }
@@ -291,6 +292,7 @@ export default class GameRoom implements Party.Server {
     for (const [id, admittedAt] of this.pendingAt) {
       if (this.tick - admittedAt < HANDSHAKE_TTL_TICKS) continue;
       this.pendingConnections.get(id)?.close(1008, "join handshake timed out");
+      this.logger.rejection("handshake_timeout", this.tick);
       this.pendingConnections.delete(id);
       this.pendingAt.delete(id);
     }
@@ -299,33 +301,44 @@ export default class GameRoom implements Party.Server {
   private simulate(): void {
     const all = Array.from(this.players.values());
     if (all.length === 0) return;
-    this.runS += DT;
     this.flashlights.tick(DT, this.level === 1);
     for (const p of all) Object.assign(p, this.flashlights.state(p.id));
-    tickRevives(all, DT);
+    const active = all.filter((player) => this.connections.has(player.id));
+    if (active.length === 0) return;
+    this.runS += DT;
+    tickRevives(active, DT);
 
-    const standing = all.filter((p) => !p.down);
+    const standing = active.filter((p) => !p.down);
     if (standing.length === 0) {
-      this.phase = "lost";
+      this.setPhase("lost");
       return;
     }
     if (canNoclip(standing, this.maze, this.keys.length)) {
-      if (this.level >= LAST_LEVEL) this.phase = "won";
+      if (this.level >= LAST_LEVEL) this.setPhase("won");
       else this.enterLevel(this.level + 1);
       return;
     }
 
-    this.applyWantedPositions(all);
+    this.movement.step(active, this.maze, this.props, DT);
 
     // Always measure how loud everyone is: the players need to SEE the mechanic that is
     // hunting them, and the HUD reads this straight off the snapshot.
-    for (const p of all) {
+    for (const p of active) {
       if (p.down) {
         p.noise = 0;
         p.heard = false;
         continue;
       }
-      const { made, reaching } = this.measureNoise(p);
+      const { made, reaching } = measurePlayerNoise({
+        player: p,
+        previous: this.prevPos.get(p.id),
+        maze: this.maze,
+        monster: this.monster,
+        mic: this.mic.get(p.id) ?? 0,
+        creaky: this.creaky,
+        dt: DT,
+      });
+      this.prevPos.set(p.id, { x: p.x, z: p.z });
       p.noise = made;
       p.heard = reaching >= MIC_GATE;
       this.reaching.set(p.id, reaching);
@@ -353,35 +366,22 @@ export default class GameRoom implements Party.Server {
     });
   }
 
-  /** Move each player toward where their client claims to be, but no faster than a sprinting
-   *  human could. Without this a client can teleport onto every key and finish in seconds. */
-  private applyWantedPositions(all: PlayerState[]): void {
-    const maxStep = SPRINT_SPEED * DT * MAX_MOVE_PER_TICK_FACTOR;
-    for (const p of all) {
-      const want = this.wanted.get(p.id);
-      if (!want) continue;
-      this.wanted.delete(p.id);
-      const dist = Math.hypot(want.x - p.x, want.z - p.z);
-      const next = resolveAuthoritativeMove(this.maze, this.props, p, want, maxStep);
-      p.x = next.x;
-      p.z = next.z;
-      if (dist > maxStep) this.log("move_clamped", { connectionId: p.id, requestedU: dist.toFixed(2) });
-    }
+  private clearPlayerTransient(id: string): void {
+    this.movement.disconnect(id);
+    this.flashlights.disconnect(id);
+    this.mic.delete(id);
+    this.reaching.delete(id);
+    const player = this.players.get(id);
+    if (!player) return;
+    player.noise = 0;
+    player.heard = false;
+    player.lit = false;
   }
 
-  /** What this player emits this tick, and how much of it reaches the creature. Both numbers
-   *  come from shared/hearing, so the simulation and the HUD can never disagree. */
-  private measureNoise(p: PlayerState): { made: number; reaching: number } {
-    const prev = this.prevPos.get(p.id);
-    const speed = prev ? Math.hypot(p.x - prev.x, p.z - prev.z) / DT : 0;
-    this.prevPos.set(p.id, { x: p.x, z: p.z });
-    // a creaky board under a moving foot is as loud as a voice — Granny's floor
-    const creak = speed > 0.05 && this.creaky.has(cellIndex(this.maze, p.x, p.z)) ? CREAK_NOISE : 0;
-    const voice = Math.max(this.mic.get(p.id) ?? 0, creak);
-    return {
-      made: rawLoudness(speed, voice),
-      reaching: heardLoudness(this.maze, p, this.monster, speed, voice),
-    };
+  private setPhase(phase: Phase): void {
+    if (this.phase === phase) return;
+    this.phase = phase;
+    this.logger.event("phase_changed", { phase });
   }
 
   private broadcast(message: ServerMsg): void {
@@ -389,9 +389,5 @@ export default class GameRoom implements Party.Server {
     for (const connection of this.connections.values()) {
       if (connection.readyState === 1) connection.send(raw);
     }
-  }
-
-  private log(event: string, details: Record<string, string>): void {
-    console.info(JSON.stringify({ event, roomId: this.room.id, ...details }));
   }
 }

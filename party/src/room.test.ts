@@ -5,6 +5,7 @@ import {
   encode,
   parseServerMsg,
   type Maze,
+  type PlayerState,
   type ServerMsg,
 } from "@liminal/shared";
 import GameRoom from "./room.js";
@@ -21,7 +22,7 @@ function connection(id: string): Party.Connection {
 function harness(): { server: GameRoom; room: Party.Room } {
   const room = {
     id: "test-room",
-    storage: { get: vi.fn(), put: vi.fn() },
+    storage: { get: vi.fn(), put: vi.fn(), delete: vi.fn() },
     broadcast: vi.fn(() => {
       throw new Error("room.broadcast must not include rejected or closed sockets");
     }),
@@ -241,5 +242,92 @@ describe("GameRoom authority", () => {
     for (const player of pending) server.onConnect(player);
     vi.advanceTimersByTime(TICK_MS);
     expect(pending[8]!.close).toHaveBeenCalledWith(1008, "handshake capacity exceeded");
+  });
+
+  it("keeps reconnect identity but removes a disconnected player from active simulation", () => {
+    vi.useFakeTimers();
+    const { server } = harness();
+    const first = connection("transport-1");
+    const second = connection("transport-2");
+    join(server, first);
+    join(server, second);
+    vi.advanceTimersByTime(TICK_MS);
+    Reflect.set(server, "level", 1);
+    server.onMessage(
+      encode({ t: "move", x: 2, z: 2, ry: 0, lit: true, mic: 1, mode: "sprint" }),
+      second,
+    );
+    vi.advanceTimersByTime(TICK_MS);
+
+    const transportPlayers = Reflect.get(server, "transportPlayers") as Map<string, string>;
+    const secondId = transportPlayers.get(second.id)!;
+    const roster = Reflect.get(server, "players") as Map<string, PlayerState>;
+    const disconnected = roster.get(secondId)!;
+    const maze = Reflect.get(server, "maze") as Maze;
+    disconnected.x = maze.thinWall.x;
+    disconnected.z = maze.thinWall.z;
+    Reflect.set(server, "keys", []);
+    const levelBefore = Reflect.get(server, "level") as number;
+
+    server.onClose(second);
+    vi.advanceTimersByTime(TICK_MS);
+
+    expect(roster.has(secondId)).toBe(true);
+    expect(disconnected).toMatchObject({ lit: false, noise: 0, heard: false });
+    expect((Reflect.get(server, "mic") as Map<string, number>).has(secondId)).toBe(false);
+    expect(Reflect.get(server, "level")).toBe(levelBefore);
+  });
+
+  it("clears the active-instance marker only after clean empty grace expiry", async () => {
+    vi.useFakeTimers();
+    const { server, room } = harness();
+    await server.onStart();
+    const player = connection("transport-1");
+    join(server, player);
+    vi.advanceTimersByTime(TICK_MS);
+    server.onClose(player);
+    vi.advanceTimersByTime(31_000);
+    await vi.waitFor(() => expect(room.storage.delete).toHaveBeenCalledWith("authoritative-room-created"));
+  });
+
+  it("does not let a disconnected roster entry block an active restart vote", () => {
+    vi.useFakeTimers();
+    const { server } = harness();
+    const first = connection("transport-1");
+    const second = connection("transport-2");
+    join(server, first);
+    join(server, second);
+    vi.advanceTimersByTime(TICK_MS);
+    Reflect.set(server, "phase", "lost");
+    server.onClose(second);
+    vi.advanceTimersByTime(TICK_MS);
+
+    server.onMessage(encode({ t: "restart" }), first);
+    vi.advanceTimersByTime(TICK_MS);
+    expect(stateMessages(first).at(-1)?.phase).toBe("playing");
+  });
+
+  it("rejects connections synchronously once clean teardown starts", () => {
+    vi.useFakeTimers();
+    const room = {
+      id: "tearing-down-room",
+      storage: {
+        get: vi.fn(),
+        put: vi.fn(),
+        delete: vi.fn(() => new Promise<void>(() => undefined)),
+      },
+    } as unknown as Party.Room;
+    const server = new GameRoom(room);
+    server.onConnect(connection("abandoned"));
+    vi.advanceTimersByTime(6_000);
+    expect(room.storage.delete).toHaveBeenCalled();
+
+    const late = connection("late");
+    server.onConnect(late);
+    vi.advanceTimersByTime(TICK_MS);
+    const messages = vi.mocked(late.send).mock.calls.map(([raw]) =>
+      typeof raw === "string" ? parseServerMsg(raw) : null,
+    );
+    expect(messages).toContainEqual({ t: "room_unavailable" });
   });
 });

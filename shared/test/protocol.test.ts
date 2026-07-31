@@ -15,7 +15,7 @@ import {
 describe("game protocol", () => {
   const clientMessages: ClientMsg[] = [
     { t: "join", name: "wanderer", lastVersion: 12, resumeToken: "token_abcdefghijklmnopqrstuvwxyz012345" },
-    { t: "move", x: 1, z: 2, ry: 3, lit: true, mic: 0.5 },
+    { t: "move", x: 1, z: 2, ry: 3, lit: true, mic: 0.5, mode: "sprint" },
     { t: "grab", id: 4 },
     { t: "restart" },
     { t: "chat", text: "stay close" },
@@ -76,6 +76,7 @@ describe("game protocol", () => {
     expect(parseClientMsg('{"t":"teleport","x":1}')).toBeNull();
     expect(parseServerMsg('{"t":"state","version":1}')).toBeNull();
     expect(parseClientMsg(`{"t":"chat","text":"${"x".repeat(2_000)}"}`)).toBeNull();
+    expect(parseClientMsg('{"t":"move","x":1,"z":2,"ry":0,"mode":"fly"}')).toBeNull();
     expect(parseClientMsg('{"t":"join","name":"x","lastVersion":0,"resumeToken":"short"}')).toBeNull();
     expect(
       parseServerMsg(
@@ -103,6 +104,7 @@ describe("matchmaking protocol", () => {
   const serverMessages: MatchServerMsg[] = [
     { t: "match_waiting", waiting: 2 },
     { t: "match_found", roomId: "opaque_room_1234567890" },
+    { t: "match_unavailable" },
   ];
 
   it.each(clientMessages)("round-trips client message $t", (message) => {

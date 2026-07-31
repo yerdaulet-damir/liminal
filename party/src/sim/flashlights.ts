@@ -29,6 +29,13 @@ export class Flashlights {
     this.lights.delete(id);
   }
 
+  disconnect(id: string): void {
+    const light = this.lights.get(id);
+    if (!light) return;
+    light.requested = false;
+    light.lit = false;
+  }
+
   request(id: string, lit: boolean): void {
     const light = this.lights.get(id);
     if (light) light.requested = lit;

@@ -10,6 +10,7 @@ import {
   parseServerMsg,
   type ChatMessage,
   type EntityState,
+  type MovementMode,
   type Phase,
   type PlayerState,
 } from "@liminal/shared";
@@ -39,7 +40,14 @@ export interface Room {
   selfDown: boolean;
   partnerDown: boolean;
   chatMessages: ChatMessage[];
-  sendMove: (x: number, z: number, ry: number, lit?: boolean, mic?: number) => void;
+  sendMove: (
+    x: number,
+    z: number,
+    ry: number,
+    lit?: boolean,
+    mic?: number,
+    mode?: MovementMode,
+  ) => void;
   sendGrab: (id: number) => void;
   sendRestart: () => void;
   sendChat: (text: string) => void;
@@ -132,10 +140,17 @@ export function useRoom(roomId: string, name: string, seat = 0): Room {
     return () => ps.close();
   }, [roomId, name, seat]);
 
-  const sendMove = useCallback((x: number, z: number, ry: number, lit = false, mic = 0) => {
+  const sendMove = useCallback((
+    x: number,
+    z: number,
+    ry: number,
+    lit = false,
+    mic = 0,
+    mode: MovementMode = "walk",
+  ) => {
     const socket = socketRef.current;
     if (socket?.readyState === WebSocket.OPEN) {
-      socket.send(encode({ t: "move", x, z, ry, lit, mic }));
+      socket.send(encode({ t: "move", x, z, ry, lit, mic, mode }));
     }
   }, []);
   const sendGrab = useCallback((id: number) => {

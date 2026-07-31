@@ -57,6 +57,13 @@ export function useQuickPlay(): QuickPlay {
         setWaiting(message.waiting);
         return;
       }
+      if (message.t === "match_unavailable") {
+        socket.close(1013, "matchmaking busy");
+        socketRef.current = null;
+        setStatus("idle");
+        setWaiting(0);
+        return;
+      }
       socket.send(encode({ t: "match_ack", roomId: message.roomId }));
       setRoomId(message.roomId);
       setStatus("matched");
