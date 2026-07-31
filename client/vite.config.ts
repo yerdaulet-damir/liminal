@@ -9,11 +9,16 @@ function inlineScriptHashes(html: string): string[] {
     .map(([, , content]) => `'sha256-${createHash("sha256").update(content ?? "").digest("base64")}'`);
 }
 
-function buildHeaders(partyHost: string, scriptHashes: readonly string[]): string {
+function buildHeaders(
+  partyHost: string,
+  scriptHashes: readonly string[],
+  analyticsHost?: string,
+): string {
+  const analyticsConnectSource = analyticsHost ? ` ${analyticsHost}` : "";
   const csp = [
     "default-src 'self'",
     "base-uri 'self'",
-    `connect-src 'self' https://${partyHost} wss://${partyHost}`,
+    `connect-src 'self' https://${partyHost} wss://${partyHost}${analyticsConnectSource}`,
     "font-src 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
@@ -43,7 +48,7 @@ function buildHeaders(partyHost: string, scriptHashes: readonly string[]): strin
 `;
 }
 
-function siteMetadata(origin: string, partyHost: string): Plugin {
+function siteMetadata(origin: string, partyHost: string, analyticsHost?: string): Plugin {
   const assets = new Map([
     ["/robots.txt", buildRobots(origin)],
     ["/sitemap.xml", buildSitemap(origin)],
@@ -71,7 +76,11 @@ function siteMetadata(origin: string, partyHost: string): Plugin {
         const html =
           typeof index.source === "string" ? index.source : Buffer.from(index.source).toString("utf8");
         const hashes = inlineScriptHashes(html);
-        this.emitFile({ type: "asset", fileName: "_headers", source: buildHeaders(partyHost, hashes) });
+        this.emitFile({
+          type: "asset",
+          fileName: "_headers",
+          source: buildHeaders(partyHost, hashes, analyticsHost),
+        });
         for (const [path, source] of assets) {
           this.emitFile({ type: "asset", fileName: path.slice(1), source });
         }
@@ -80,7 +89,33 @@ function siteMetadata(origin: string, partyHost: string): Plugin {
   };
 }
 
-function productionEnvironment(env: Record<string, string>): { origin: string; partyHost: string } {
+interface PublicEnvironment {
+  analyticsHost?: string;
+  origin: string;
+  partyHost: string;
+}
+
+function optionalAnalyticsHost(env: Record<string, string>): string | undefined {
+  const key = env.VITE_POSTHOG_KEY?.trim();
+  const rawHost = env.VITE_POSTHOG_HOST?.trim().replace(/\/$/, "");
+  if (!key && !rawHost) return undefined;
+  if (!key || !rawHost) {
+    throw new Error("VITE_POSTHOG_KEY and VITE_POSTHOG_HOST must be configured together");
+  }
+
+  let host: URL;
+  try {
+    host = new URL(rawHost);
+  } catch {
+    throw new Error("VITE_POSTHOG_HOST must be an absolute HTTPS origin");
+  }
+  if (host.protocol !== "https:" || host.origin !== rawHost || host.hostname === "localhost") {
+    throw new Error("VITE_POSTHOG_HOST must be an HTTPS origin without a path or trailing slash");
+  }
+  return rawHost;
+}
+
+function productionEnvironment(env: Record<string, string>): PublicEnvironment {
   const rawOrigin = env.VITE_PUBLIC_ORIGIN?.replace(/\/$/, "");
   const partyHost = env.VITE_PARTY_HOST;
 
@@ -105,7 +140,7 @@ function productionEnvironment(env: Record<string, string>): { origin: string; p
   ) {
     throw new Error("VITE_PARTY_HOST must be a production hostname without a scheme, path, or port");
   }
-  return { origin: rawOrigin, partyHost };
+  return { analyticsHost: optionalAnalyticsHost(env), origin: rawOrigin, partyHost };
 }
 
 export default defineConfig(({ command, mode }) => {
@@ -116,10 +151,18 @@ export default defineConfig(({ command, mode }) => {
     : {
         origin: (env.VITE_PUBLIC_ORIGIN || "http://localhost:5173").replace(/\/$/, ""),
         partyHost: env.VITE_PARTY_HOST || "localhost:1999",
+        analyticsHost: optionalAnalyticsHost(env),
       };
 
   return {
-    plugins: [react(), siteMetadata(publicEnvironment.origin, publicEnvironment.partyHost)],
+    plugins: [
+      react(),
+      siteMetadata(
+        publicEnvironment.origin,
+        publicEnvironment.partyHost,
+        publicEnvironment.analyticsHost,
+      ),
+    ],
     server: { host: true, port: 5173 },
   };
 });

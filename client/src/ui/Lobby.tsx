@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { trackAnalytics } from "../analytics.js";
 import { useQuickPlay } from "../net/useQuickPlay.js";
 import { JoinPanel } from "./JoinPanel.js";
 import { LandingStory } from "./LandingStory.js";
@@ -21,17 +22,22 @@ export function Lobby({ onPlay }: LobbyProps) {
     if (enteredMatch.current === quickPlay.roomId) return;
 
     enteredMatch.current = quickPlay.roomId;
+    trackAnalytics("quick_play_matched");
     history.replaceState(null, "", roomUrl(quickPlay.roomId));
     onPlay(name.trim() || "player", quickPlay.roomId);
   }, [name, onPlay, quickPlay.roomId, quickPlay.status]);
 
   const playPrivate = () => {
     const roomId = existingRoom ?? createRoomId();
+    trackAnalytics(existingRoom ? "invite_join_started" : "private_room_created");
     if (!existingRoom) {
       const url = roomUrl(roomId);
       history.replaceState(null, "", url);
       navigator.clipboard?.writeText(url).then(
-        () => setCopied(true),
+        () => {
+          setCopied(true);
+          trackAnalytics("invite_link_copied");
+        },
         () => undefined,
       );
     }
@@ -39,7 +45,15 @@ export function Lobby({ onPlay }: LobbyProps) {
   };
 
   // Same room, no link to send: both players sit at this laptop and split the screen.
-  const playCouch = () => onPlay(name.trim() || "player", existingRoom ?? createRoomId(), true);
+  const playCouch = () => {
+    trackAnalytics("couch_game_started");
+    onPlay(name.trim() || "player", existingRoom ?? createRoomId(), true);
+  };
+
+  const startQuickPlay = () => {
+    trackAnalytics("quick_play_started");
+    quickPlay.findMatch();
+  };
 
   return (
     <main className="landing">
@@ -69,7 +83,7 @@ export function Lobby({ onPlay }: LobbyProps) {
           copied={copied}
           existingRoom={existingRoom}
           name={name}
-          quickPlay={quickPlay}
+          quickPlay={{ ...quickPlay, findMatch: startQuickPlay }}
           onNameChange={setName}
           onPlayCouch={playCouch}
           onPlayPrivate={playPrivate}
