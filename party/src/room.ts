@@ -127,6 +127,7 @@ export default class GameRoom implements Party.Server {
 
   onClose(conn: Party.Connection): void {
     this.commands.enqueueLifecycle({ kind: "disconnect", connection: conn });
+    this.ensureLoop();
   }
 
   onError(conn: Party.Connection): void {
