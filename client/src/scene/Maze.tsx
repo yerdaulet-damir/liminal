@@ -6,13 +6,8 @@ import { levelWorld } from "./levelWorld.js";
 import { useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
-import {
-  CELL,
-  MAZE_COLS,
-  MAZE_ROWS,
-  WALL_HEIGHT,
-  generateMaze,
-} from "@liminal/shared";
+import { CELL, MAZE_COLS, MAZE_ROWS, WALL_HEIGHT, type Maze as MazeData } from "@liminal/shared";
+import { DeadMall } from "./DeadMall/DeadMall.js";
 
 function useRepeatTexture(url: string, rx: number, ry: number): THREE.Texture {
   const tex = useTexture(url);
@@ -24,7 +19,7 @@ function useRepeatTexture(url: string, rx: number, ry: number): THREE.Texture {
   }, [tex, rx, ry]);
 }
 
-// per-level theme: 0 = yellow office lobby, 1 = concrete warehouse
+// Render palettes only. World geometry comes exclusively from `worldLevel`.
 const THEMES = [
   {
     floor: "/textures/carpet.jpg",
@@ -50,22 +45,40 @@ const THEMES = [
     wall: "/textures/pooltile.jpg",
     wallTint: "#eef6f8",
   },
+  {
+    floor: "/textures/mall-terrazzo.webp",
+    floorTint: "#aaa69d",
+    ceil: "/textures/ceiling.jpg",
+    ceilTint: "#77736c",
+    wall: "/textures/mall-shutter.webp",
+    wallTint: "#b6ad9f",
+  },
 ];
 
 export function Maze({
   seed,
   level = 0,
+  worldLevel,
+  artLevel,
   unlocked = true,
 }: {
   seed: number;
+  /** @deprecated Pass worldLevel and artLevel separately. */
   level?: number;
+  worldLevel?: number;
+  artLevel?: number;
   /** All keys found — only then does the thin wall start to flicker and let you through. */
   unlocked?: boolean;
 }) {
-  const maze = useMemo(() => levelWorld(seed, level).maze, [seed, level]);
+  const resolvedWorldLevel = worldLevel ?? level;
+  const resolvedArtLevel = artLevel ?? level;
+  const maze = useMemo(
+    () => levelWorld(seed, resolvedWorldLevel, resolvedArtLevel).maze,
+    [seed, resolvedWorldLevel, resolvedArtLevel],
+  );
   const worldW = MAZE_COLS * CELL;
   const worldD = MAZE_ROWS * CELL;
-  const theme = THEMES[Math.min(level, THEMES.length - 1)]!;
+  const theme = THEMES[Math.min(resolvedArtLevel, THEMES.length - 1)]!;
 
   const floor = useRepeatTexture(theme.floor, worldW / 3, worldD / 3);
   const ceiling = useRepeatTexture(theme.ceil, worldW / 2.4, worldD / 2.4);
@@ -90,7 +103,8 @@ export function Maze({
       {/* the noclip spot — looks like every other wall, but it flickers. that's the only tell. */}
       <ThinWall maze={maze} tex={wallTex} tint={theme.wallTint} unlocked={unlocked} />
       {/* the Poolrooms: lukewarm water everywhere, ankle deep */}
-      {level >= 2 && <Water w={worldW} d={worldD} />}
+      {resolvedWorldLevel === 2 && <Water w={worldW} d={worldD} />}
+      {resolvedWorldLevel === 3 && <DeadMall maze={maze} />}
     </group>
   );
 }
@@ -125,7 +139,7 @@ function ThinWall({
   tint,
   unlocked,
 }: {
-  maze: ReturnType<typeof generateMaze>;
+  maze: MazeData;
   tex: THREE.Texture;
   tint: string;
   unlocked: boolean;

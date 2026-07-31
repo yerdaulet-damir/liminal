@@ -23,9 +23,28 @@ const FIGURE_URLS = [
 
 [...Object.values(DOOR_URL), ...FIGURE_URLS].forEach((u) => useGLTF.preload(u));
 
-export function Dressing({ seed, level = 0 }: { seed: number; level?: number }) {
-  const { maze } = levelWorld(seed, level);
-  const dressing = useMemo(() => placeDressing(seed, maze, level), [seed, maze, level]);
+export function Dressing({
+  seed,
+  level = 0,
+  worldLevel,
+  artLevel,
+}: {
+  seed: number;
+  /** @deprecated Pass worldLevel and artLevel separately. */
+  level?: number;
+  worldLevel?: number;
+  artLevel?: number;
+}) {
+  const resolvedWorldLevel = worldLevel ?? level;
+  const resolvedArtLevel = artLevel ?? level;
+  const { maze } = levelWorld(seed, resolvedWorldLevel, resolvedArtLevel);
+  const dressing = useMemo(
+    () =>
+      resolvedWorldLevel === 3
+        ? { doors: [], figures: [] }
+        : placeDressing(seed, maze, resolvedArtLevel),
+    [seed, maze, resolvedWorldLevel, resolvedArtLevel],
+  );
 
   return (
     <group>

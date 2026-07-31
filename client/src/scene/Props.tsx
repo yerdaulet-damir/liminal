@@ -67,17 +67,35 @@ function Graffiti({ text, x, z, rotY }: { text: string; x: number; z: number; ro
   );
 }
 
-export function Props({ seed, level = 0 }: { seed: number; level?: number }) {
+export function Props({
+  seed,
+  level = 0,
+  worldLevel,
+  artLevel,
+}: {
+  seed: number;
+  /** @deprecated Pass worldLevel and artLevel separately. */
+  level?: number;
+  worldLevel?: number;
+  artLevel?: number;
+}) {
+  const resolvedWorldLevel = worldLevel ?? level;
+  const resolvedArtLevel = artLevel ?? level;
   const items = useMemo(() => {
-    const { maze, props: placed } = levelWorld(seed, level);
+    const { maze, props: placed } = levelWorld(seed, resolvedWorldLevel, resolvedArtLevel);
     // furniture layout comes from shared (same source as collision)
-    const props = placed.map((p) => ({ url: PROP_URL[p.kind], ...p }));
+    // Dead Mall collision proxies match its procedural meshes; do not draw duplicate GLTF props.
+    const props = resolvedWorldLevel === 3
+      ? []
+      : placed.map((p) => ({ url: PROP_URL[p.kind], ...p }));
 
     // graffiti: on ~10 random full-length walls, offset off the surface
     const rng = makeRng(seed ^ 0x6ea111); // graffiti roll — separate stream from furniture
     const tags: Array<{ text: string; x: number; z: number; rotY: number }> = [];
     const fullWalls =
-      level >= 2 ? [] : maze.walls.filter((w) => Math.max(w.w, w.d) > CELL * 0.8);
+      resolvedArtLevel === 2 || resolvedArtLevel === 3
+        ? []
+        : maze.walls.filter((w) => Math.max(w.w, w.d) > CELL * 0.8);
     for (let k = 0; k < Math.min(10, fullWalls.length); k++) {
       const w = fullWalls[rng.int(0, fullWalls.length)]!;
       const horizontal = w.w > w.d; // wall runs along X → faces ±Z
@@ -90,7 +108,7 @@ export function Props({ seed, level = 0 }: { seed: number; level?: number }) {
       });
     }
     return { props, tags };
-  }, [seed, level]);
+  }, [seed, resolvedWorldLevel, resolvedArtLevel]);
 
   return (
     <group>

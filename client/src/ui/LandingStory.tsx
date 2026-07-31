@@ -4,6 +4,7 @@ const levels = [
   { marker: "I", name: "The Lobby", detail: "Fluorescent halls that forget where they lead." },
   { marker: "II", name: "The Warehouse", detail: "A blackout, a flashlight, and nowhere to hide." },
   { marker: "III", name: "The Poolrooms", detail: "Blue water under a sky that is not there." },
+  { marker: "IV", name: "The Dead Mall", detail: "Watch the mannequin. Never blink together." },
 ];
 
 const questions = [
@@ -35,7 +36,7 @@ export function LandingStory() {
           </p>
         </div>
 
-        <div className="story__levels" aria-label="Three levels">
+        <div className="story__levels" aria-label="Four levels">
           {levels.map((level) => (
             <article className="story__level" key={level.name}>
               <span>{level.marker}</span>

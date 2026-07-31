@@ -1,4 +1,4 @@
-const updated = "2026-07-30";
+const updated = "2026-07-31";
 
 const facts = [
   "Free two-player cooperative horror game for modern web browsers",
@@ -7,7 +7,7 @@ const facts = [
   "In-room text chat is bounded, rate-limited, and restored after reconnection",
   "The optional microphone is analyzed locally and audio is never transmitted",
   "A server-authoritative creature hunts footsteps, creaky floors, and loud voices",
-  "Three playable environments: The Lobby, The Warehouse, and The Poolrooms",
+  "Four playable environments: The Lobby, The Warehouse, The Poolrooms, and The Dead Mall",
 ];
 
 export function buildRobots(origin: string): string {
@@ -63,7 +63,7 @@ export function buildLlms(origin: string): string {
 - [Play Liminal](${origin}/): Invite one friend or use Quick Play to meet a random partner in a procedural liminal maze.
 - [How multiplayer works](${origin}/#multiplayer): Two players share one authoritative room state, monster, level, and outcome.
 - [How the microphone works](${origin}/#microphone): Voice is analyzed locally; only a clamped loudness value is sent as game input.
-- [Levels and objectives](${origin}/#levels): Find three keys, unlock a thin wall, and escape through The Lobby, The Warehouse, and The Poolrooms.
+- [Levels and objectives](${origin}/#levels): Cross The Lobby, The Warehouse, The Poolrooms, and The Dead Mall, where a mannequin moves only when neither player is looking.
 - [Frequently asked questions](${origin}/#faq): Browser support, player count, privacy, installation, and microphone requirements.
 
 ## Key facts

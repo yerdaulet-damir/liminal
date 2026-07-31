@@ -38,6 +38,30 @@ const KIND_SETS: Array<Array<{ kind: PropKind; radius: number }>> = [
   [], // the Poolrooms: emptiness IS the dressing
 ];
 
+function mallCollisionProps(maze: Maze): PropPlacement[] {
+  const foodCells = maze.zones?.find((zone) => zone.kind === "food-court")?.cells ?? [];
+  const tables = foodCells
+    .filter((cell) => cell !== 0)
+    .slice(0, 6)
+    .map((cell) => ({
+      kind: "table" as const,
+      radius: 0.86,
+      x: (cell % maze.cols) * CELL + CELL / 2,
+      z: Math.floor(cell / maze.cols) * CELL + CELL / 2,
+      rotY: 0,
+    }));
+  return [
+    {
+      kind: "table",
+      radius: 1.95,
+      x: (maze.cols * CELL) / 2,
+      z: (maze.rows * CELL) / 2,
+      rotY: 0,
+    },
+    ...tables,
+  ];
+}
+
 export interface PropPlacement {
   kind: PropKind;
   radius: number;
@@ -51,6 +75,7 @@ export function placeProps(
   maze: Maze = generateMaze(seed),
   level = 0,
 ): PropPlacement[] {
+  if (level === 3) return mallCollisionProps(maze);
   const rng = makeRng(seed ^ 0xc0ffee);
   const kinds = KIND_SETS[Math.min(level, KIND_SETS.length - 1)]!;
   const out: PropPlacement[] = [];

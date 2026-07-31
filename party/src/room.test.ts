@@ -1,6 +1,12 @@
 import type * as Party from "partykit/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TICK_MS, encode, parseServerMsg } from "@liminal/shared";
+import {
+  TICK_MS,
+  encode,
+  parseServerMsg,
+  type Maze,
+  type ServerMsg,
+} from "@liminal/shared";
 import GameRoom from "./room.js";
 
 function connection(id: string): Party.Connection {
@@ -20,6 +26,13 @@ function harness(): { server: GameRoom; room: Party.Room } {
     }),
   } as unknown as Party.Room;
   return { server: new GameRoom(room), room };
+}
+
+function stateMessages(player: Party.Connection): Extract<ServerMsg, { t: "state" }>[] {
+  return vi.mocked(player.send).mock.calls.flatMap(([raw]) => {
+    const message = typeof raw === "string" ? parseServerMsg(raw) : null;
+    return message?.t === "state" ? [message] : [];
+  });
 }
 
 afterEach(() => {
@@ -58,5 +71,59 @@ describe("GameRoom authority", () => {
       .find((message) => message?.t === "room_full");
     expect(rejected).toEqual({ t: "room_full" });
     expect(players[2]!.close).toHaveBeenCalled();
+  });
+
+  it("advances from the Poolrooms to the dead mall on the authoritative tick", () => {
+    vi.useFakeTimers();
+    const { server } = harness();
+    const player = connection("p1");
+    server.onConnect(player);
+    vi.advanceTimersByTime(TICK_MS);
+
+    Reflect.set(server, "level", 2);
+    Reflect.set(server, "keys", []);
+    const maze = Reflect.get(server, "maze") as Maze;
+    server.onMessage(
+      encode({
+        t: "move",
+        x: maze.thinWall.x,
+        z: maze.thinWall.z,
+        ry: 0,
+      }),
+      player,
+    );
+
+    expect(stateMessages(player).at(-1)?.level).toBe(0);
+    vi.advanceTimersByTime(TICK_MS);
+    expect(stateMessages(player).at(-1)).toMatchObject({
+      phase: "playing",
+      level: 3,
+      outage: false,
+    });
+    expect((Reflect.get(server, "maze") as Maze).zones?.map((zone) => zone.kind)).toEqual([
+      "atrium",
+      "food-court",
+      "storefront-loop",
+      "service-wing",
+    ]);
+  });
+
+  it("restarts a completed dead mall run at the lobby on the tick", () => {
+    vi.useFakeTimers();
+    const { server } = harness();
+    const player = connection("p1");
+    server.onConnect(player);
+    vi.advanceTimersByTime(TICK_MS);
+    Reflect.set(server, "level", 3);
+    Reflect.set(server, "phase", "won");
+
+    server.onMessage(encode({ t: "restart" }), player);
+    expect(Reflect.get(server, "level")).toBe(3);
+    vi.advanceTimersByTime(TICK_MS);
+
+    expect(stateMessages(player).at(-1)).toMatchObject({
+      phase: "playing",
+      level: 0,
+    });
   });
 });

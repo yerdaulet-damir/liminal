@@ -5,11 +5,12 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CELL, MAZE_COLS, MAZE_ROWS, WALL_HEIGHT } from "@liminal/shared";
 import type { PointLight } from "three";
+import { MallLighting } from "./DeadMall/MallLighting.js";
 
 export function Lighting({ level = 0, outage = false }: { level?: number; outage?: boolean }) {
   const lights = useRef<Array<PointLight | null>>([]);
   const dark = level === 1; // the warehouse: sparse cold light, heavier gloom
-  const pool = level >= 2; // the poolrooms: soft diffuse daylight, no menace
+  const pool = level === 2; // the Poolrooms alone are the bright reward beat
 
   // emissive light panels: every 2 cells (the look)
   const panels: Array<[number, number, number]> = [];
@@ -41,6 +42,8 @@ export function Lighting({ level = 0, outage = false }: { level?: number; outage
       l.intensity = n > cutoff ? (dark ? 6 : 10) : dark ? 0.6 : 3;
     });
   });
+
+  if (level === 3) return <MallLighting outage={outage} />;
 
   if (pool) {
     // Sublimity: bright, soft, blue-white. No flicker, no fear — the reward beat.

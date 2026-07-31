@@ -3,6 +3,7 @@
 
 import { makeRng } from "./rng.js";
 import { CELL, MAZE_COLS, MAZE_ROWS, WALL_THICKNESS } from "./constants.js";
+import { generateDeadMall } from "./procgen/dead-mall.js";
 
 /** Axis-aligned wall, centered at (x, z) in world space, size w along X and d along Z. */
 export interface WallBox {
@@ -20,6 +21,14 @@ export interface CellOpen {
   w: boolean;
 }
 
+export type MazeZoneKind = "atrium" | "food-court" | "storefront-loop" | "service-wing";
+
+export interface MazeZone {
+  kind: MazeZoneKind;
+  /** Cell indices in row-major order. */
+  cells: number[];
+}
+
 export interface Maze {
   cols: number;
   rows: number;
@@ -34,6 +43,14 @@ export interface Maze {
   /** The noclip spot: a "thin" wall of the exit cell. Looks like a wall, but you can walk
    *  through it (canon: unstable matter). NOT in `walls`, so collision ignores it. */
   thinWall: WallBox;
+  /** Optional semantic regions for level-specific scene dressing. */
+  zones?: MazeZone[];
+}
+
+/** Generate the requested level while retaining the legacy layout contract for levels 0-2. */
+export function generateLevel(seed: number, level: number): Maze {
+  const base = generateMaze(seed);
+  return level === 3 ? generateDeadMall(base) : base;
 }
 
 interface Cell {

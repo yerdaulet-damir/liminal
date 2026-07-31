@@ -16,7 +16,7 @@ The project is not affiliated with an official Backrooms franchise. It uses orig
 |---|---|
 | Multiplayer | Two players join through a private URL or random Quick Play matchmaking |
 | Chat | Bounded, server-relayed text chat with reconnect resync |
-| Run structure | The Lobby, The Warehouse, and The Poolrooms |
+| Run structure | The Lobby, The Warehouse, The Poolrooms, and The Dead Mall |
 | Objective | Find three seeded keys, unlock the thin wall, and move together |
 | Threat | One server-authoritative creature with level-specific rules |
 | Sound | Footsteps, creaky floors, and optional microphone loudness feed one hearing model |
@@ -38,7 +38,13 @@ Concrete, crates, fog, a finite flashlight, and seeded power outages. In darknes
 
 ### The Poolrooms
 
-White tile, shallow water, and no active creature. This is the quiet final space before escape.
+White tile, shallow water, and no active creature. This is the quiet space before the final descent.
+
+### The Dead Mall
+
+A structured abandoned shopping center with a skylit atrium, food court, shuttered storefront loop,
+and claustrophobic service wing. A pale mannequin moves only when neither player is looking at it:
+one player watches while the other searches, then they trade.
 
 Every level is derived from the room seed. Both players and the server build the same byte-stable layout. All standing players must reach the unlocked thin wall before the room advances.
 
@@ -99,18 +105,23 @@ Controls:
 | Shift | Short loud sprint |
 | C | Silent crouch |
 | F | Flashlight in The Warehouse |
-| Enter | Open text chat |
+| M | Open or close text chat |
+| Enter | Send a chat message |
 | Escape | Release pointer lock |
 
 Useful visual-development routes:
 
 ```text
-?level=0   preview The Lobby
-?level=1   preview The Warehouse
-?level=2   preview The Poolrooms
+?level=0   preview The Lobby art direction
+?level=1   preview The Warehouse art direction
+?level=2   preview The Poolrooms art direction
+?level=3   preview The Dead Mall art direction
 ?watch=1   follow the creature
 ?shim=1    keep rendering in headless screenshot sessions
 ```
+
+`?level=` changes materials and lighting only. The room remains authoritative for geometry,
+keys, collision, and monsters.
 
 ## Verify
 
@@ -178,7 +189,7 @@ docs/           product, research, design, monetization, and decisions
 - Text chat is server-relayed, rate-limited, bounded to recent messages, and restored on reconnect.
 - Its distinguishing mechanic is a creature that reacts to movement and optional real microphone loudness.
 - Raw microphone audio is never transmitted.
-- The current run contains three environments: The Lobby, The Warehouse, and The Poolrooms.
+- The current run contains four environments: The Lobby, The Warehouse, The Poolrooms, and The Dead Mall.
 - The server owns the creature and game outcome; clients send input and render snapshots.
 - The maze is deterministically generated from a seed.
 
@@ -192,6 +203,7 @@ These facts are also published in the generated `/llms.txt`. The working title, 
 | Creep creature | Quaternius Ultimate Monsters | CC0 |
 | Furniture and warehouse props | KayKit Furniture Bits and Dungeon Remastered | CC0 |
 | Wallpaper, carpet, ceiling, concrete, and pool tiles | [ambientCG](https://ambientcg.com) | CC0 |
+| Dead Mall terrazzo and shutter textures | Original images generated with OpenAI image generation | Project assets |
 | Hum, roar, breathing, scream, and water source clips | [Freesound](https://freesound.org/) | CC0 sources |
 | Landing key art | Original image generated for this project with OpenAI image generation | Project asset |
 

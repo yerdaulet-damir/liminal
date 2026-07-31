@@ -15,6 +15,7 @@ export const LEVELS: readonly LevelDef[] = [
   { name: "the lobby", rule: "listener", breather: false, outages: false },
   { name: "the warehouse", rule: "light-averse", breather: false, outages: true },
   { name: "the poolrooms", rule: "listener", breather: true, outages: false },
+  { name: "the dead mall", rule: "watcher", breather: false, outages: false },
 ];
 
 export const LAST_LEVEL = LEVELS.length - 1;

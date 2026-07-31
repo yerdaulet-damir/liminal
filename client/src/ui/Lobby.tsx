@@ -67,7 +67,7 @@ export function Lobby({ onPlay }: LobbyProps) {
             Stay quiet.
           </h1>
           <p className="landing__intro">
-            Three impossible places. One private link. Something in the dark listens when you speak.
+            Four impossible places. One private link. Something in the dark listens when you speak.
           </p>
         </div>
 
