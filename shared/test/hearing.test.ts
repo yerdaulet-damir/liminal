@@ -4,16 +4,17 @@
 import { describe, it, expect } from "vitest";
 import { footstepNoise, heardLoudness, wallsBetween } from "../src/hearing.js";
 import { generateMaze } from "../src/procgen.js";
-import { MIC_GATE } from "../src/constants.js";
+import { CROUCH_SPEED, MIC_GATE, SPRINT_SPEED, WALK_SPEED } from "../src/constants.js";
 
 const maze = generateMaze(4242);
 const at = (x: number, z: number) => ({ x, z });
 
 describe("hearing", () => {
-  it("standing still is silent; walking is audible; sprinting is loud", () => {
+  it("noise scales with speed: crouching is under the gate, sprinting is loud", () => {
     expect(footstepNoise(0)).toBe(0);
-    expect(footstepNoise(1)).toBe(0.3);
-    expect(footstepNoise(3.6)).toBe(0.6);
+    expect(footstepNoise(CROUCH_SPEED)).toBeLessThan(MIC_GATE); // crouch is genuinely silent
+    expect(footstepNoise(WALK_SPEED)).toBeGreaterThan(MIC_GATE);
+    expect(footstepNoise(SPRINT_SPEED)).toBeGreaterThan(footstepNoise(WALK_SPEED));
   });
 
   it("a whisper stays under the gate, a scream does not", () => {

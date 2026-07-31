@@ -27,7 +27,10 @@ export const LUNGE_S = 0.8;
 export const STAGGER_S = 2; // missed-lunge recovery = the escape window
 
 // Director (Alien menace + L4D cycle + Eyeless Dog suspicion — see RESEARCH).
-export const SPAWN_GRACE_S = 90; // monster inert at run start — emptiness is the product
+// Grace at the start of a level: the creature cannot catch you yet. Kept SHORT on purpose —
+// "corridors where nothing happens" is the #1 boredom complaint players make about this genre,
+// and a free browser game has no sunk cost to spend on dead air (docs/RESEARCH.md §player voices).
+export const SPAWN_GRACE_S = 20;
 export const HUNT_GRACE_S = 3; // roar first, kills after
 export const HUNT_MAX_S = 30;
 export const STALK_TIMEOUT_S = 45;

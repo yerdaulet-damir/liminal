@@ -1,0 +1,86 @@
+.briefing {
+  position: fixed;
+  left: clamp(1rem, 4vw, 3.5rem);
+  bottom: clamp(1rem, 6vh, 4rem);
+  z-index: 12;
+  width: min(30rem, calc(100vw - 2rem));
+  padding: 1.4rem 1.6rem 1.5rem;
+  border: 1px solid rgba(214, 197, 122, 0.28);
+  border-left: 2px solid rgba(214, 197, 122, 0.75);
+  background: linear-gradient(180deg, rgba(10, 11, 8, 0.93), rgba(10, 11, 8, 0.86));
+  color: #efe9d2;
+  font: 400 0.9rem/1.55 ui-sans-serif, system-ui, sans-serif;
+  backdrop-filter: blur(3px);
+  pointer-events: none;
+  animation: briefing-in 620ms ease-out both;
+}
+
+.briefing--leaving {
+  animation: briefing-out 600ms ease-in both;
+}
+
+.briefing__numeral {
+  margin: 0;
+  color: #d6c57a;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+}
+
+.briefing__name {
+  margin: 0.15rem 0 0.6rem;
+  font-size: clamp(1.5rem, 3.4vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.briefing__flavor {
+  margin: 0 0 1rem;
+  color: #b8b29a;
+}
+
+.briefing__label {
+  margin: 0 0 0.15rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #8d8770;
+}
+
+.briefing__objective {
+  margin: 0 0 0.9rem;
+  color: #f6f1dc;
+  font-weight: 600;
+}
+
+.briefing__rules {
+  margin: 0 0 0.9rem;
+  padding-left: 1.05rem;
+  color: #b8b29a;
+}
+
+.briefing__rules li {
+  margin-bottom: 0.3rem;
+}
+
+.briefing__tip {
+  margin: 0;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(214, 197, 122, 0.18);
+  color: #d6c57a;
+  font-style: italic;
+}
+
+@keyframes briefing-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes briefing-out {
+  to { opacity: 0; transform: translateY(10px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .briefing,
+  .briefing--leaving { animation-duration: 1ms; }
+}

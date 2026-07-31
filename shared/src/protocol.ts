@@ -13,6 +13,12 @@ export interface PlayerState {
   ry: number;
   down: boolean;
   reviveP: number;
+  /** How much noise this player is MAKING right now, 0..1 (footsteps ∪ creaky floor ∪ voice),
+   *  before distance and walls. Broadcast so both players can see who is being loud — the
+   *  mechanic has to be visible to be learnable. */
+  noise: number;
+  /** True when that noise actually reaches the creature. Loud is survivable; heard is not. */
+  heard: boolean;
 }
 
 export interface EntityState {
@@ -58,7 +64,10 @@ export type MatchClientMsg =
   | { t: "cancel_match" }
   | { t: "match_ack"; roomId: string };
 
-export type MatchServerMsg = { t: "match_waiting" } | { t: "match_found"; roomId: string };
+export type MatchServerMsg =
+  /** You are now the open game: anyone pressing Quick Play joins you. `waiting` includes you. */
+  | { t: "match_waiting"; waiting: number }
+  | { t: "match_found"; roomId: string };
 
 export type WireMsg = ClientMsg | ServerMsg | MatchClientMsg | MatchServerMsg;
 
@@ -96,6 +105,8 @@ function parsePlayer(value: unknown): PlayerState | null {
   ) {
     return null;
   }
+  const noise = isNum(value.noise) ? Math.max(0, Math.min(1, value.noise)) : 0;
+  const heard = value.heard === true;
   return {
     id: value.id,
     name: value.name,
@@ -104,6 +115,8 @@ function parsePlayer(value: unknown): PlayerState | null {
     ry: value.ry,
     down: value.down,
     reviveP: value.reviveP,
+    noise,
+    heard,
   };
 }
 
@@ -212,7 +225,12 @@ export function parseMatchClientMsg(raw: string): MatchClientMsg | null {
 export function parseMatchServerMsg(raw: string): MatchServerMsg | null {
   const data = decodeObject(raw, SERVER_FRAME_MAX);
   if (!data) return null;
-  if (data.t === "match_waiting") return { t: "match_waiting" };
+  if (data.t === "match_waiting") {
+    const waiting = typeof data.waiting === "number" && Number.isFinite(data.waiting)
+      ? Math.max(1, Math.floor(data.waiting))
+      : 1;
+    return { t: "match_waiting", waiting };
+  }
   if (data.t === "match_found" && isRoomId(data.roomId)) {
     return { t: "match_found", roomId: data.roomId };
   }

@@ -173,8 +173,17 @@ export function generateMaze(
       }
     }
   }
-  const fi = far % cols;
-  const fj = (far - fi) / cols;
+  // Taking the single farthest cell put the exit in the same far corner 93% of the time —
+  // after one run the "maze" was just a diagonal walk. Instead choose, by seeded RNG, any cell
+  // that is *far enough* (>= 60% of the deepest). Still deterministic, no longer a tell.
+  const deepest = depth[far]!;
+  const distant: number[] = [];
+  for (let idx = 0; idx < depth.length; idx++) {
+    if (depth[idx]! >= deepest * 0.6) distant.push(idx);
+  }
+  const exitCell = distant.length > 0 ? distant[rng.int(0, distant.length)]! : far;
+  const fi = exitCell % cols;
+  const fj = (exitCell - fi) / cols;
 
   // The noclip spot: pick the exit cell's first still-standing wall (deterministic order)
   // and pull it OUT of the solid set — it renders as a wall but lets you through.

@@ -7,6 +7,8 @@ export type QuickPlayStatus = "idle" | "searching" | "matched";
 
 export interface QuickPlay {
   status: QuickPlayStatus;
+  /** How many players are holding an open game right now (including you). */
+  waiting: number;
   roomId: string | null;
   findMatch: () => void;
   cancelMatch: () => void;
@@ -15,6 +17,7 @@ export interface QuickPlay {
 export function useQuickPlay(): QuickPlay {
   const [status, setStatus] = useState<QuickPlayStatus>("idle");
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [waiting, setWaiting] = useState(0);
   const socketRef = useRef<PartySocket | null>(null);
 
   const cancelMatch = useCallback(() => {
@@ -24,6 +27,7 @@ export function useQuickPlay(): QuickPlay {
     socketRef.current = null;
     setStatus("idle");
     setRoomId(null);
+    setWaiting(0);
   }, []);
 
   const findMatch = useCallback(() => {
@@ -50,6 +54,7 @@ export function useQuickPlay(): QuickPlay {
       if (!message) return;
       if (message.t === "match_waiting") {
         setStatus("searching");
+        setWaiting(message.waiting);
         return;
       }
       socket.send(encode({ t: "match_ack", roomId: message.roomId }));
@@ -60,5 +65,5 @@ export function useQuickPlay(): QuickPlay {
 
   useEffect(() => () => socketRef.current?.close(), []);
 
-  return { status, roomId, findMatch, cancelMatch };
+  return { status, waiting, roomId, findMatch, cancelMatch };
 }

@@ -4,11 +4,12 @@
 import { useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { PICKUP_DIST, generateMaze, placeKeys } from "@liminal/shared";
+import { PICKUP_DIST } from "@liminal/shared";
+import { levelWorld } from "./levelWorld.js";
 import type { Room } from "../net/useRoom.js";
 
 export function Keys({ seed, room }: { seed: number; room: Room }) {
-  const all = useMemo(() => placeKeys(seed, generateMaze(seed)), [seed]);
+  const all = useMemo(() => levelWorld(seed, 0).keys, [seed]);
   const left = all.filter((k) => room.keysLeft.includes(k.id));
   return (
     <>

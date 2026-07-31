@@ -32,13 +32,17 @@ export default class MatchmakingRoom implements Party.Server {
       return;
     }
     if (message.t === "find_match") this.find(sender);
-    if (message.t === "cancel_match") this.queue.cancel(sender.id);
+    if (message.t === "cancel_match") {
+      this.queue.cancel(sender.id);
+      this.announceWaiting();
+    }
     if (message.t === "match_ack") this.queue.acknowledge(sender.id, message.roomId);
     await this.persist();
   }
 
   async onClose(connection: Party.Connection): Promise<void> {
     this.queue.disconnect(connection.id);
+    this.announceWaiting();
     await this.persist();
   }
 
@@ -50,7 +54,7 @@ export default class MatchmakingRoom implements Party.Server {
     this.reconcileWaiting();
     const result = this.queue.find(sender.id);
     if (result.kind === "waiting") {
-      sender.send(encode({ t: "match_waiting" }));
+      this.announceWaiting();
       return;
     }
     if (result.kind === "assigned") {
@@ -61,6 +65,17 @@ export default class MatchmakingRoom implements Party.Server {
       this.room.getConnection(ticket)?.send(encode({ t: "match_found", roomId: result.roomId }));
     }
     this.log("match_paired", { roomId: result.roomId });
+    this.announceWaiting();
+  }
+
+  /** Everyone still queuing is an open game; tell them how many doors are open. */
+  private announceWaiting(): void {
+    const waiting = this.queue.snapshot().waiting;
+    for (const ticket of waiting) {
+      this.room.getConnection(ticket)?.send(
+        encode({ t: "match_waiting", waiting: waiting.length }),
+      );
+    }
   }
 
   private reconcileWaiting(): void {

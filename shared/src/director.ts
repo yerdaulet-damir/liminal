@@ -34,8 +34,11 @@ export interface Director {
 export interface Senses {
   nearestDistU: number; // monster → nearest living player
   /** Loudest thing it can hear right now, 0..1 after distance + wall damping.
-   *  One pipeline for footsteps AND the microphone — see room.hearNoise(). */
+   *  One pipeline for footsteps AND the microphone — see room.measureNoise(). */
   noise: number;
+  /** Nearest player is close AND nothing solid is between you. The creature is blind, so this
+   *  is presence, not sight — it must never be able to sense you through a wall. */
+  exposed: boolean;
   dtS: number;
 }
 
@@ -58,7 +61,7 @@ export function tickDirector(d: Director, s: Senses, rng: Rng): void {
 
   // menace: builds when it's close, decays otherwise
   const near = s.nearestDistU < 10;
-  const seen = s.nearestDistU < 8; // ponytail: distance proxy for LOS; raycast if it feels wrong
+  const seen = s.exposed;
   d.menace += (near ? MENACE_NEAR_PER_S : 0) * s.dtS + (seen ? MENACE_SEEN_PER_S : 0) * s.dtS;
   if (!near) d.menace -= MENACE_DECAY_PER_S * s.dtS;
   d.menace = Math.max(0, Math.min(100, d.menace));

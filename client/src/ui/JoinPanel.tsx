@@ -5,6 +5,8 @@ import "./quick-play.css";
 type MicState = "off" | "on" | "denied";
 type QuickPlayState = {
   status: "idle" | "searching" | "matched";
+  /** Open games right now, including yours while you wait. */
+  waiting: number;
   findMatch: () => void;
   cancelMatch: () => void;
 };
@@ -77,7 +79,9 @@ export function JoinPanel({
         <div className="landing__search" role="status" aria-live="polite">
           <span>
             <i aria-hidden="true" />
-            Listening for another player…
+            {quickPlay.waiting > 1
+              ? `Your door is open. ${quickPlay.waiting} doors open right now…`
+              : "Your door is open. Waiting for someone to walk in…"}
           </span>
           <button type="button" onClick={quickPlay.cancelMatch}>
             Cancel
@@ -92,7 +96,7 @@ export function JoinPanel({
         >
           <span>
             <strong>Quick play</strong>
-            Enter with a random stranger
+            Open your game to a stranger, or walk into theirs
           </span>
           <span aria-hidden="true">→</span>
         </button>

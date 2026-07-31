@@ -12,6 +12,8 @@ import {
   generateMaze,
   hashSeed,
   heardLoudness,
+  rawLoudness,
+  wallsBetween,
   levelSeed,
   makeDirector,
   makeMonster,
@@ -45,6 +47,8 @@ export default class GameRoom implements Party.Server {
   private readonly prevPos = new Map<string, { x: number; z: number }>();
   private readonly lit = new Map<string, boolean>();
   private readonly mic = new Map<string, number>();
+  /** Per-tick: how much of each player's noise actually reaches the creature. */
+  private readonly reaching = new Map<string, number>();
   private readonly seed: number;
   private readonly rng: Rng;
   private level = 0;
@@ -168,6 +172,8 @@ export default class GameRoom implements Party.Server {
       p.z = this.maze.start.z;
       p.down = false;
       p.reviveP = 0;
+      p.noise = 0;
+      p.heard = false;
     }
   }
 
@@ -223,6 +229,20 @@ export default class GameRoom implements Party.Server {
       return;
     }
 
+    // Always measure how loud everyone is: the players need to SEE the mechanic that is
+    // hunting them, and the HUD reads this straight off the snapshot.
+    for (const p of all) {
+      if (p.down) {
+        p.noise = 0;
+        p.heard = false;
+        continue;
+      }
+      const { made, reaching } = this.measureNoise(p);
+      p.noise = made;
+      p.heard = reaching >= MIC_GATE;
+      this.reaching.set(p.id, reaching);
+    }
+
     const def = levelDef(this.level);
     if (def.breather) return; // the Poolrooms: nothing lives here
     if (def.outages) this.outage.tick(DT, this.rng);
@@ -244,14 +264,21 @@ export default class GameRoom implements Party.Server {
         nearestDist = d;
         nearest = p;
       }
-      const noise = this.hearNoise(p);
+      const noise = this.reaching.get(p.id) ?? 0;
       if (noise > loudestNoise) {
         loudestNoise = noise;
         loudest = p;
       }
     }
 
-    tickDirector(this.director, { nearestDistU: nearestDist, noise: loudestNoise, dtS: DT }, this.rng);
+    // blind creature: "exposed" means close with nothing solid between, never sight through walls
+    const exposed =
+      nearestDist < 8 && wallsBetween(this.maze, nearest, this.monster) === 0;
+    tickDirector(
+      this.director,
+      { nearestDistU: nearestDist, noise: loudestNoise, exposed, dtS: DT },
+      this.rng,
+    );
 
     const { caught } = stepMonster(
       this.monster,
@@ -283,14 +310,19 @@ export default class GameRoom implements Party.Server {
     return { x: p.x, z: p.z, ry: p.ry, lit: this.lit.get(p.id) === true };
   }
 
-  private hearNoise(p: PlayerState): number {
+  /** What this player emits this tick, and how much of it reaches the creature. Both numbers
+   *  come from shared/hearing, so the simulation and the HUD can never disagree. */
+  private measureNoise(p: PlayerState): { made: number; reaching: number } {
     const prev = this.prevPos.get(p.id);
     const speed = prev ? Math.hypot(p.x - prev.x, p.z - prev.z) / DT : 0;
     this.prevPos.set(p.id, { x: p.x, z: p.z });
     // a creaky board under a moving foot is as loud as a voice — Granny's floor
     const creak = speed > 0.05 && this.creaky.has(cellIndex(this.maze, p.x, p.z)) ? CREAK_NOISE : 0;
     const voice = Math.max(this.mic.get(p.id) ?? 0, creak);
-    return heardLoudness(this.maze, p, this.monster, speed, voice);
+    return {
+      made: rawLoudness(speed, voice),
+      reaching: heardLoudness(this.maze, p, this.monster, speed, voice),
+    };
   }
 
   private broadcast(message: ServerMsg): void {

@@ -14,12 +14,11 @@ import {
   SPRINT_SPEED,
   TICK_MS,
   WALK_SPEED,
-  generateMaze,
-  placeProps,
   pushOutOfCircles,
   resolveMove,
 } from "@liminal/shared";
 import { setThinWallDistance } from "../audio/ambience.js";
+import { levelWorld } from "../scene/levelWorld.js";
 import { flashlight, resetFlashlight } from "./flashlight.js";
 import { micLoudness } from "../audio/mic.js";
 
@@ -49,8 +48,7 @@ export function Player({
   roundEnded?: boolean;
 }) {
   const { camera } = useThree();
-  const maze = useMemo(() => generateMaze(seed), [seed]);
-  const props = useMemo(() => placeProps(seed, maze, level), [seed, maze, level]);
+  const { maze, props } = useMemo(() => levelWorld(seed, level), [seed, level]);
   const keys = useRef<Record<string, boolean>>({});
   const pos = useRef({ x: maze.start.x, z: maze.start.z });
   const sendAcc = useRef(0);

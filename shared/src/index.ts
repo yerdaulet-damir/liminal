@@ -9,3 +9,5 @@ export * from "./hearing.js";
 export * from "./monster.js";
 export * from "./items.js";
 export * from "./protocol.js";
+export * from "./lore.js";
+export * from "./dressing.js";

@@ -6,8 +6,12 @@ import { useRoom } from "./net/useRoom.js";
 import { ChatPanel } from "./ui/ChatPanel.js";
 import { Hud } from "./ui/Hud.js";
 import { EndOverlay } from "./ui/EndOverlay.js";
+import { Briefing } from "./ui/Briefing.js";
+import { NoiseMeter } from "./ui/NoiseMeter.js";
 import { Maze } from "./scene/Maze.js";
 import { Props } from "./scene/Props.js";
+import { Dressing } from "./scene/Dressing.js";
+import { DevLook } from "./scene/DevLook.js";
 import { Keys } from "./scene/Keys.js";
 import { Lighting } from "./scene/Lighting.js";
 import { Actors } from "./scene/Actors.js";
@@ -50,11 +54,14 @@ export function Game({ name, roomId }: { name: string; roomId: string }) {
     return <div style={connectStyle}>entering the backrooms...</div>;
   }
 
+  // The room owns the level. `?level=N` is a dev PAINT flag only: it may re-theme the scene,
+  // but geometry and keys always come from the server's level, or pickups desync.
   const levelOverride = new URLSearchParams(location.search).get("level");
-  const level = levelOverride !== null ? Number(levelOverride) : room.level;
+  const level = room.level;
+  const artLevel = levelOverride !== null ? Number(levelOverride) : level;
   const seed = levelSeed(room.welcome.seed, level);
-  const dark = level === 1;
-  const pool = level >= 2;
+  const dark = artLevel === 1;
+  const pool = artLevel >= 2;
   const bg = pool ? "#cfe8f2" : dark ? "#0a0b0b" : "#cfc188";
   const levelName = pool ? "the poolrooms" : dark ? "the warehouse" : "the lobby";
 
@@ -63,15 +70,17 @@ export function Game({ name, roomId }: { name: string; roomId: string }) {
       <Canvas shadows camera={{ fov: 75, near: 0.1, far: 60 }} gl={{ preserveDrawingBuffer: true }}>
         <color attach="background" args={[bg]} />
         <Suspense fallback={null}>
-          <Lighting level={level} outage={room.outage} />
-          <Maze seed={seed} level={level} unlocked={room.keysLeft.length === 0} />
-          <Props seed={seed} level={level} />
+          <Lighting level={artLevel} outage={room.outage} />
+          <Maze seed={seed} level={artLevel} unlocked={room.keysLeft.length === 0} />
+          <Props seed={seed} level={artLevel} />
+          <Dressing seed={seed} level={artLevel} />
           <Keys seed={seed} room={room} />
           <Actors room={room} />
+          <DevLook />
           <Player
             key={level}
             seed={seed}
-            level={level}
+            level={artLevel}
             sendMove={room.sendMove}
             frozen={room.phase !== "playing" || room.selfDown || falling}
             roundEnded={room.phase !== "playing"}
@@ -80,6 +89,8 @@ export function Game({ name, roomId }: { name: string; roomId: string }) {
         </Suspense>
       </Canvas>
       <Hud room={room} />
+      <NoiseMeter room={room} />
+      <Briefing level={level} active={room.phase === "playing" && !falling} />
       <ChatPanel room={room} />
       <EndOverlay room={room} />
       {falling && (
