@@ -9,7 +9,7 @@ import { levelWorld } from "./levelWorld.js";
 import type { Room } from "../net/useRoom.js";
 
 export function Keys({ seed, room }: { seed: number; room: Room }) {
-  const all = useMemo(() => levelWorld(seed, 0).keys, [seed]);
+  const all = useMemo(() => levelWorld(seed, room.level).keys, [seed, room.level]);
   const left = all.filter((k) => room.keysLeft.includes(k.id));
   return (
     <>

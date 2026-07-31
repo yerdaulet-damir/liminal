@@ -1,7 +1,7 @@
 import type React from "react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { levelSeed } from "@liminal/shared";
+import { levelLore, levelSeed } from "@liminal/shared";
 import { useRoom } from "./net/useRoom.js";
 import { ChatPanel } from "./ui/ChatPanel.js";
 import { Hud } from "./ui/Hud.js";
@@ -62,12 +62,17 @@ export function Game({ name, roomId, seat }: { name: string; roomId: string; sea
   // but geometry and keys always come from the server's level, or pickups desync.
   const levelOverride = new URLSearchParams(location.search).get("level");
   const level = room.level;
-  const artLevel = levelOverride !== null ? Number(levelOverride) : level;
+  const previewLevel = levelOverride === null ? level : Number(levelOverride);
+  const artLevel = Number.isInteger(previewLevel) && previewLevel >= 0 && previewLevel <= 3
+    ? previewLevel
+    : level;
   const seed = levelSeed(room.welcome.seed, level);
-  const dark = artLevel === 1;
-  const pool = artLevel >= 2;
-  const bg = pool ? "#cfe8f2" : dark ? "#0a0b0b" : "#cfc188";
-  const levelName = pool ? "the poolrooms" : dark ? "the warehouse" : "the lobby";
+  const bg = artLevel === 3
+    ? "#222521"
+    : artLevel === 2
+      ? "#cfe8f2"
+      : artLevel === 1 ? "#0a0b0b" : "#cfc188";
+  const levelName = levelLore(level).name.toLowerCase();
 
   return (
     <main className="game-shell">
@@ -75,16 +80,21 @@ export function Game({ name, roomId, seat }: { name: string; roomId: string; sea
         <color attach="background" args={[bg]} />
         <Suspense fallback={null}>
           <Lighting level={artLevel} outage={room.outage} />
-          <Maze seed={seed} level={artLevel} unlocked={room.keysLeft.length === 0} />
-          <Props seed={seed} level={artLevel} />
-          <Dressing seed={seed} level={artLevel} />
+          <Maze
+            seed={seed}
+            worldLevel={level}
+            artLevel={artLevel}
+            unlocked={room.keysLeft.length === 0}
+          />
+          <Props seed={seed} worldLevel={level} artLevel={artLevel} />
+          <Dressing seed={seed} worldLevel={level} artLevel={artLevel} />
           <Keys seed={seed} room={room} />
           <Actors room={room} seat={mySeat} />
           <DevLook />
           <Player
             key={level}
             seed={seed}
-            level={artLevel}
+            level={level}
             seat={mySeat}
             sendMove={room.sendMove}
             frozen={room.phase !== "playing" || room.selfDown || falling}

@@ -1,9 +1,8 @@
 // How loud a player reads to the entity. ONE pipeline for footsteps and the microphone —
 // pure, so it can be reasoned about and tested without a socket or a browser.
 
-import { collides } from "./collision.js";
 import { MIC_HEAR_RANGE, MIC_WALL_DAMP, SPRINT_SPEED } from "./constants.js";
-import type { Maze } from "./procgen.js";
+import type { Maze, WallBox } from "./procgen.js";
 
 /** Noise a body makes by moving, 0..1 — continuous in speed.
  *
@@ -17,16 +16,41 @@ export function footstepNoise(speedUps: number): number {
   return Math.min(0.8, (speedUps / SPRINT_SPEED) * 0.8);
 }
 
-/** Cheap occlusion: sample the segment, count wall crossings (capped at 2). */
+function segmentHitsWall(
+  a: { x: number; z: number },
+  b: { x: number; z: number },
+  wall: WallBox,
+): boolean {
+  const pad = 0.05;
+  const bounds: Array<[number, number, number, number]> = [
+    [a.x, b.x - a.x, wall.x - wall.w / 2 - pad, wall.x + wall.w / 2 + pad],
+    [a.z, b.z - a.z, wall.z - wall.d / 2 - pad, wall.z + wall.d / 2 + pad],
+  ];
+  let enter = 0;
+  let leave = 1;
+  for (const [origin, delta, min, max] of bounds) {
+    if (Math.abs(delta) < 1e-9) {
+      if (origin < min || origin > max) return false;
+      continue;
+    }
+    const near = Math.min((min - origin) / delta, (max - origin) / delta);
+    const far = Math.max((min - origin) / delta, (max - origin) / delta);
+    enter = Math.max(enter, near);
+    leave = Math.min(leave, far);
+    if (enter > leave) return false;
+  }
+  return leave >= 0 && enter <= 1;
+}
+
+/** Exact segment/AABB occlusion, capped at two walls for the acoustic falloff. */
 export function wallsBetween(
   maze: Maze,
   a: { x: number; z: number },
   b: { x: number; z: number },
 ): number {
   let hits = 0;
-  for (let i = 1; i < 8; i++) {
-    const t = i / 8;
-    if (collides(maze, a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t, 0.05)) hits++;
+  for (const wall of maze.walls) {
+    if (segmentHitsWall(a, b, wall)) hits++;
     if (hits >= 2) return 2;
   }
   return hits;

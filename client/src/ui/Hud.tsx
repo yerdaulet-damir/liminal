@@ -3,6 +3,7 @@
 
 import type React from "react";
 import { useEffect, useState } from "react";
+import { levelLore } from "@liminal/shared";
 import type { Room } from "../net/useRoom.js";
 import { bindingFor } from "../player/inputScheme.js";
 import { flashlightFor } from "../player/flashlight.js";
@@ -28,13 +29,7 @@ export function Hud({ room, seat = 0 }: { room: Room; seat?: number }) {
         <span style={S.sep}>·</span>
         <span>{count} in the maze</span>
         <span style={S.sep}>·</span>
-        <span>
-          {room.level >= 2
-            ? "level 2 · the poolrooms"
-            : room.level === 1
-              ? "level 1 · the warehouse"
-              : "level 0 · the lobby"}
-        </span>
+        <span>{`level ${room.level} · ${levelLore(room.level).name.toLowerCase()}`}</span>
         <span style={S.sep}>·</span>
         <span style={{ color: room.keysLeft.length ? "#f7e7a0" : "#9fd17a" }}>
           🔑 {3 - room.keysLeft.length}/3

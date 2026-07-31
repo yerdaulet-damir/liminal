@@ -18,6 +18,7 @@ import {
   STARE_SLOW,
 } from "./constants.js";
 import type { MonsterMood } from "./director.js";
+import { wallsBetween } from "./hearing.js";
 import { cellCenter, cellIndex, nextStepToward } from "./path.js";
 import type { Maze } from "./procgen.js";
 import type { Rng } from "./rng.js";
@@ -71,13 +72,18 @@ export function litBy(m: MonsterState, players: readonly SensedPlayer[]): boolea
 }
 
 /** Is any player looking straight at it? (watcher rule / staring contest) */
-export function observedBy(m: MonsterState, players: readonly SensedPlayer[]): boolean {
+export function observedBy(
+  m: MonsterState,
+  maze: Maze,
+  players: readonly SensedPlayer[],
+): boolean {
   return players.some((p) => {
     const dx = m.x - p.x;
     const dz = m.z - p.z;
     const d = Math.hypot(dx, dz);
     if (d < 1e-6) return false;
-    return (Math.sin(p.ry) * dx + Math.cos(p.ry) * dz) / d > STARE_DOT;
+    const facing = (Math.sin(p.ry) * dx + Math.cos(p.ry) * dz) / d > STARE_DOT;
+    return facing && wallsBetween(maze, p, m) === 0;
   });
 }
 
@@ -110,12 +116,14 @@ function goalFor(
 /** Speed for this tick, after the level's rule and the player's counter-play. */
 function speedFor(
   m: MonsterState,
+  maze: Maze,
   mood: MonsterMood,
   rule: MonsterRule,
   s: Sensed,
   inMoodS: number,
   players: readonly SensedPlayer[],
 ): number {
+  if (rule === "watcher" && observedBy(m, maze, players)) return 0;
   if (mood !== "hunt") return PATROL_SPEED;
   let speed = inMoodS <= HUNT_GRACE_S ? PATROL_SPEED : HUNT_SPEED;
   if (m.lungeS >= 0) speed = LUNGE_SPEED;
@@ -124,8 +132,7 @@ function speedFor(
     if (s.dark) speed *= 1.3; // the dark is its element
     if (litBy(m, players)) speed *= LIT_SLOW; // pinned by the beam
   }
-  if (rule === "watcher" && observedBy(m, players)) return 0; // it cannot move while watched
-  if (rule === "listener" && observedBy(m, players)) speed *= STARE_SLOW; // stare it down
+  if (rule === "listener" && observedBy(m, maze, players)) speed *= STARE_SLOW; // stare it down
   return speed;
 }
 
@@ -161,7 +168,7 @@ export function stepMonster(
   if (mood === "hunt") updateLunge(m, s, rule, inMoodS, dtS, players);
 
   const goal = goalFor(m, maze, mood, s, rng);
-  const speed = speedFor(m, mood, rule, s, inMoodS, players);
+  const speed = speedFor(m, maze, mood, rule, s, inMoodS, players);
   if (goal && speed > 0) moveToward(m, goal, speed * dtS);
 
   const caught =

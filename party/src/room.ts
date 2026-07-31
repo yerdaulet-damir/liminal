@@ -11,7 +11,7 @@ import {
   creakyCells,
   directorOnDown,
   encode,
-  generateMaze,
+  generateLevel,
   hashSeed,
   heardLoudness,
   rawLoudness,
@@ -75,7 +75,7 @@ export default class GameRoom implements Party.Server {
   constructor(readonly room: Party.Room) {
     this.seed = hashSeed(room.id);
     this.rng = makeRng(this.seed ^ 0x9e3779b9); // director/wander rolls — seeded, replayable
-    this.maze = generateMaze(levelSeed(this.seed, 0));
+    this.maze = generateLevel(levelSeed(this.seed, 0), 0);
     this.monster = makeMonster(this.maze.exit);
     this.stockLevel(0);
   }
@@ -166,7 +166,7 @@ export default class GameRoom implements Party.Server {
 
   private enterLevel(level: number): void {
     this.level = level;
-    this.maze = generateMaze(levelSeed(this.seed, level));
+    this.maze = generateLevel(levelSeed(this.seed, level), level);
     this.monster = makeMonster(this.maze.exit);
     this.director = makeDirector();
     this.outage.reset(this.rng);

@@ -23,9 +23,28 @@ const FIGURE_URLS = [
 
 [...Object.values(DOOR_URL), ...FIGURE_URLS].forEach((u) => useGLTF.preload(u));
 
-export function Dressing({ seed, level = 0 }: { seed: number; level?: number }) {
-  const { maze } = levelWorld(seed, level);
-  const dressing = useMemo(() => placeDressing(seed, maze, level), [seed, maze, level]);
+export function Dressing({
+  seed,
+  level = 0,
+  worldLevel,
+  artLevel,
+}: {
+  seed: number;
+  /** @deprecated Pass worldLevel and artLevel separately. */
+  level?: number;
+  worldLevel?: number;
+  artLevel?: number;
+}) {
+  const resolvedWorldLevel = worldLevel ?? level;
+  const resolvedArtLevel = artLevel ?? level;
+  const { maze } = levelWorld(seed, resolvedWorldLevel, resolvedArtLevel);
+  const dressing = useMemo(
+    () =>
+      resolvedWorldLevel === 3
+        ? { doors: [], figures: [] }
+        : placeDressing(seed, maze, resolvedArtLevel),
+    [seed, maze, resolvedWorldLevel, resolvedArtLevel],
+  );
 
   return (
     <group>
@@ -44,8 +63,6 @@ function useNormalized(url: string, targetHeight: number) {
   const { scene } = useGLTF(url);
   return useMemo(() => {
     const clone = SkeletonUtils.clone(scene);
-    // packs export at wildly different units (these figures are ~38–45 units tall, the doors
-    // ~4.2) — measure precisely and normalize, or a body renders as a speck on the carpet
     clone.updateWorldMatrix(true, true);
     const box = new THREE.Box3().setFromObject(clone, true);
     const h = box.max.y - box.min.y;

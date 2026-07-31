@@ -7,7 +7,7 @@
 **Liminal is a free two-player cooperative horror game that runs entirely in a web browser.**
 No download, no account, no launcher. One player opens a private link or hits Quick Play; the
 other clicks it and spawns beside them in the same procedurally generated liminal space. Find
-three keys, cross three levels, and get out — while a server-authoritative creature hunts the
+three keys per floor, cross four levels, and get out — while a server-authoritative creature hunts the
 sound you make. Including, if you allow it, your real voice.
 
 *Not affiliated with any official Backrooms property. Original creature, original code, generic
@@ -58,13 +58,14 @@ thin. Both of you have to be standing at it to fall through. Nobody leaves alone
 For the first **20 seconds of every level, nothing hunts you** — long enough to get your
 bearings, short enough that the quiet never becomes dead air.
 
-### The three levels
+### The four levels
 
 | | Level | What it looks like | The rule that changes |
 |---|---|---|---|
 | **I** | **The Lobby** | Mono-yellow wallpaper, damp mustard carpet, fluorescent hum, abandoned furniture, graffiti from people who came before you | The creature is **blind**. It hunts the loudest thing in the building. Staring straight at it slows it down. |
 | **II** | **The Warehouse** | Concrete, crates, fog, cold sparse light — and seeded **power outages** | Your flashlight **pins it** (×0.15 speed, no lunge). In the dark it is **×1.3 faster** than normal. 90 seconds of battery for the whole floor. |
 | **III** | **The Poolrooms** | White tile, shallow blue water, soft daylight from nowhere | **Nothing lives here.** Breathe. Find the last thin wall. |
+| **IV** | **The Dead Mall** | A skylit atrium, shuttered storefronts, dead food court, dry fountain, and service corridors | A mannequin moves only when nobody can see it. A wall or corner breaks your gaze. |
 
 ![The Lobby: yellow partition walls, mustard carpet, fluorescent ceiling panels, a red nightstand, key counter showing 0 of 3](docs/media/lobby.jpg)
 
@@ -151,7 +152,7 @@ both clients interpolate and draw
 ## Verify it yourself
 
 ```bash
-pnpm test        # 75 tests across 13 files
+pnpm test        # deterministic procgen, netcode, gameplay, and UI tests
 pnpm typecheck   # strict TypeScript, no `any`, all three packages
 ```
 
@@ -243,6 +244,7 @@ Everything shipped here is free and credited. No stock slop, no ripped assets.
 | The creature (rigged, 17 clips) | Quaternius Ultimate Monsters | CC0 |
 | Furniture, crates, barrels | KayKit Furniture Bits + Dungeon Remastered | CC0 |
 | Wallpaper, carpet, ceiling, concrete, pool tile | [ambientCG](https://ambientcg.com) | CC0 |
+| Dead Mall terrazzo and shutter textures | Generated for this project with OpenAI image generation | Project asset |
 | Fluorescent hum, roar, breathing, scream, water | [freesound.org](https://freesound.org) | CC0 |
 
 Per-file attribution lives in [`client/public/textures/LICENSE.txt`](client/public/textures/LICENSE.txt).
@@ -288,7 +290,7 @@ Realizing your friend has stopped talking.
   microphone loudness; whispering below the gate is always safe and screaming triggers an
   immediate hunt.
 - Microphone audio is analyzed locally and never transmitted.
-- A run crosses three environments — The Lobby, The Warehouse, and The Poolrooms — and each
+- A run crosses four environments — The Lobby, The Warehouse, The Poolrooms, and The Dead Mall — and each
   requires finding three seeded keys before the exit wall becomes passable.
 - The maze is generated deterministically from a room seed, so both players and the server
   build an identical world.

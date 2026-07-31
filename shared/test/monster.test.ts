@@ -1,8 +1,8 @@
 // Per-level monster rules. Each rule is a different counter-play; these tests are the contract.
 
 import { describe, it, expect } from "vitest";
-import { makeMonster, stepMonster, type SensedPlayer } from "../src/monster.js";
-import { generateMaze } from "../src/procgen.js";
+import { makeMonster, observedBy, stepMonster, type SensedPlayer } from "../src/monster.js";
+import { generateLevel, generateMaze } from "../src/procgen.js";
 import { makeRng } from "../src/rng.js";
 
 const maze = generateMaze(31337);
@@ -49,6 +49,41 @@ describe("monster rules", () => {
   it("watcher: it cannot move at all while looked at (SCP-173)", () => {
     expect(closedDistance("watcher", true, false)).toBeCloseTo(0, 5);
     expect(closedDistance("watcher", false, false)).toBeGreaterThan(0);
+  });
+
+  it.each(["calm", "stalk"] as const)("watcher: stays frozen while watched in %s", (mood) => {
+    const m = makeMonster({ x: maze.start.x + 8, z: maze.start.z });
+    const p = player(maze.start.x, maze.start.z, m, true);
+    const before = { x: m.x, z: m.z };
+    stepMonster(
+      m,
+      maze,
+      mood,
+      "watcher",
+      { nearest: p, nearestDist: 8, loudest: null, dark: false },
+      [p],
+      2,
+      DT,
+      makeRng(11),
+    );
+    expect(m).toMatchObject(before);
+  });
+
+  it("watcher: a wall breaks the player's gaze", () => {
+    const blocked = makeMonster({ x: 26, z: 6 });
+    const behindWall = player(26, 2, blocked, true);
+    expect(observedBy(blocked, maze, [behindWall])).toBe(false);
+
+    const visible = makeMonster({ x: maze.start.x + 1, z: maze.start.z });
+    const nearby = player(maze.start.x, maze.start.z, visible, true);
+    expect(observedBy(visible, maze, [nearby])).toBe(true);
+  });
+
+  it("watcher: detects a thin wall near the end of a long diagonal", () => {
+    const mall = generateLevel(73, 3);
+    const watcher = makeMonster({ x: 30, z: 10 });
+    const facing = player(2, 2, watcher, true);
+    expect(observedBy(watcher, mall, [facing])).toBe(false);
   });
 
   it("retreating monster holds still and drops its lunge", () => {

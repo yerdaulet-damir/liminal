@@ -70,6 +70,21 @@ export const LEVELS_LORE: readonly LevelLore[] = [
       "Both of you must reach the wall. Nobody leaves alone.",
     ],
   },
+  {
+    numeral: "IV",
+    name: "The Dead Mall",
+    flavor:
+      "The skylights still perform daylight for stores that have forgotten their names. Plastic " +
+      "palms gather dust around a dry fountain. Somewhere behind the shutters, a mannequin is " +
+      "waiting for both of you to look away.",
+    objective: "Search the atrium, food court, storefront loop, and service wing for three final keys.",
+    tip: "It cannot move while either of you is looking directly at it. Blink together and it gets closer.",
+    rules: [
+      "One player watches the mannequin while the other searches. Trade places before panic wins.",
+      "The atrium gives you long sightlines. The service corridors take them away.",
+      "A corner breaks your gaze. Say it before you turn.",
+    ],
+  },
 ];
 
 /** Rules that hold everywhere, for the tutorial card and the docs. */

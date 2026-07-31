@@ -2,13 +2,21 @@
 // If this ever fails, players will end up in different mazes. Treat a failure as a P0.
 
 import { describe, it, expect } from "vitest";
-import { generateMaze } from "../src/procgen.js";
+import { generateLevel, generateMaze } from "../src/procgen.js";
 import { hashSeed, levelSeed, makeRng } from "../src/rng.js";
 import { cellIndex, nextStepToward } from "../src/path.js";
 import { placeProps } from "../src/props.js";
+import { placeKeys } from "../src/items.js";
 import { pushOutOfCircles } from "../src/collision.js";
 
 describe("maze determinism", () => {
+  it("preserves the byte-identical legacy layout for levels 0-2", () => {
+    for (const level of [0, 1, 2]) {
+      const seed = levelSeed(0x5eed, level);
+      expect(JSON.stringify(generateLevel(seed, level))).toEqual(JSON.stringify(generateMaze(seed)));
+    }
+  });
+
   it("same seed → byte-identical maze (this catches any Math.random/Date.now)", () => {
     const a = generateMaze(12345);
     const b = generateMaze(12345);
@@ -135,5 +143,114 @@ describe("maze determinism", () => {
     const seq = [r.next(), r.next(), r.next()];
     const r2 = makeRng(42);
     expect([r2.next(), r2.next(), r2.next()]).toEqual(seq);
+  });
+});
+
+describe("Dead Mall level", () => {
+  const hashLayout = (maze: ReturnType<typeof generateLevel>): number => {
+    let hash = 0x811c9dc5;
+    for (const char of JSON.stringify(maze)) {
+      hash ^= char.charCodeAt(0);
+      hash = Math.imul(hash, 0x01000193);
+    }
+    return hash >>> 0;
+  };
+
+  const reachable = (maze: ReturnType<typeof generateLevel>): Set<number> => {
+    const seen = new Set([0]);
+    const queue = [0];
+    while (queue.length > 0) {
+      const index = queue.shift()!;
+      const open = maze.open[index]!;
+      const adjacent = [
+        open.n ? index - maze.cols : -1,
+        open.e ? index + 1 : -1,
+        open.s ? index + maze.cols : -1,
+        open.w ? index - 1 : -1,
+      ];
+      for (const next of adjacent) {
+        if (next >= 0 && !seen.has(next)) {
+          seen.add(next);
+          queue.push(next);
+        }
+      }
+    }
+    return seen;
+  };
+
+  it("has a stable seed hash and varies across seeds", () => {
+    const mall = generateLevel(0xdead, 3);
+    expect(hashLayout(mall)).toBe(2_911_073_745);
+    expect(hashLayout(generateLevel(0xdead, 3))).toBe(hashLayout(mall));
+    expect(hashLayout(generateLevel(0xbeef, 3))).not.toBe(hashLayout(mall));
+  });
+
+  it("contains the connected mall macro-layout", () => {
+    const mall = generateLevel(73, 3);
+    expect(mall.zones?.map((zone) => zone.kind)).toEqual([
+      "atrium",
+      "food-court",
+      "storefront-loop",
+      "service-wing",
+    ]);
+    const seen = reachable(mall);
+    for (const zone of mall.zones ?? []) {
+      expect(zone.cells.length).toBeGreaterThan(3);
+      for (const cell of zone.cells) expect(seen.has(cell)).toBe(true);
+    }
+  });
+
+  it("shares collision footprints for the fountain and food-court tables", () => {
+    const mall = generateLevel(73, 3);
+    const props = placeProps(73, mall, 3);
+    expect(props).toHaveLength(7);
+    expect(props[0]).toMatchObject({ x: 24, z: 24, radius: 1.95 });
+    for (const prop of props) {
+      expect(Math.hypot(prop.x - mall.start.x, prop.z - mall.start.z)).toBeGreaterThan(
+        prop.radius + 0.4,
+      );
+    }
+  });
+
+  it("keeps open passages reciprocal and in agreement with collision walls", () => {
+    const mall = generateLevel(91, 3);
+    const hasWall = (x: number, z: number, w: number, d: number): boolean =>
+      mall.walls.some(
+        (wall) =>
+          Math.abs(wall.x - x) < 1e-6 &&
+          Math.abs(wall.z - z) < 1e-6 &&
+          Math.abs(wall.w - w) < 1e-6 &&
+          Math.abs(wall.d - d) < 1e-6,
+      );
+    for (let j = 0; j < mall.rows; j++) {
+      for (let i = 0; i < mall.cols; i++) {
+        const index = j * mall.cols + i;
+        const open = mall.open[index]!;
+        if (i < mall.cols - 1) {
+          expect(open.e).toBe(mall.open[index + 1]!.w);
+          expect(open.e).toBe(
+            !hasWall((i + 1) * mall.cell, j * mall.cell + mall.cell / 2, 0.3, mall.cell + 0.3),
+          );
+        }
+        if (j < mall.rows - 1) {
+          expect(open.s).toBe(mall.open[index + mall.cols]!.n);
+          expect(open.s).toBe(
+            !hasWall(i * mall.cell + mall.cell / 2, (j + 1) * mall.cell, mall.cell + 0.3, 0.3),
+          );
+        }
+      }
+    }
+  });
+
+  it("is traversable with reachable keys and exit over many seeds", () => {
+    for (let seed = 0; seed < 100; seed++) {
+      const mall = generateLevel(seed, 3);
+      const seen = reachable(mall);
+      expect(seen.size).toBe(mall.cols * mall.rows);
+      expect(seen.has(cellIndex(mall, mall.exit.x, mall.exit.z))).toBe(true);
+      for (const key of placeKeys(seed, mall)) {
+        expect(seen.has(cellIndex(mall, key.x, key.z))).toBe(true);
+      }
+    }
   });
 });
