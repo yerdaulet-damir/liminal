@@ -76,17 +76,7 @@ function useNormalized(url: string, targetHeight: number) {
     clone.updateWorldMatrix(true, true);
     const box = new THREE.Box3().setFromObject(clone, true);
     const h = box.max.y - box.min.y;
-    const scale = h > 0 ? targetHeight / h : 1;
-    const bone = (want: string) => {
-      let found: THREE.Object3D | null = null;
-      clone.traverse((o) => { if (!found && o.name.toLowerCase() === want) found = o; });
-      return found ? (found as THREE.Object3D).getWorldPosition(new THREE.Vector3()) : null;
-    };
-    const head = bone("head"), foot = bone("footl");
-    console.log("BODY", url, "boxH", h.toFixed(2), "scale", scale.toFixed(4),
-      "headY", head ? (head.y * scale).toFixed(2) : "-", "footY", foot ? (foot.y * scale).toFixed(2) : "-",
-      "rootScale", clone.scale.toArray().join(","), "children", clone.children.length);
-    return { clone, scale };
+    return { clone, scale: h > 0 ? targetHeight / h : 1 };
   }, [scene, targetHeight, url]);
 }
 

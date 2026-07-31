@@ -22,6 +22,7 @@ shot-*.jpeg
 /frame*.txt
 /shot*.jpeg
 /shared/scout.mjs
+/client/rootscale.mjs
 
 # Private agent configuration and internal working documents
 .claude/
