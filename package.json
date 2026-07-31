@@ -9,8 +9,9 @@
     "dev": "concurrently -n party,client -c magenta,cyan \"pnpm --filter party dev\" \"pnpm --filter client dev\"",
     "build": "pnpm --filter client build",
     "check:assets": "node scripts/check-assets.mjs",
+    "check:csp": "node scripts/check-csp.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
-    "verify:ci": "pnpm check:assets && pnpm check:secrets && pnpm audit --prod --audit-level=high && pnpm test && pnpm typecheck && pnpm build",
+    "verify:ci": "pnpm check:assets && pnpm check:secrets && pnpm audit --prod --audit-level=high && pnpm test && pnpm typecheck && pnpm build && pnpm check:csp",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r typecheck"
   },

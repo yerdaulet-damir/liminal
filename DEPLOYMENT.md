@@ -28,12 +28,14 @@ pnpm typecheck
 VITE_PUBLIC_ORIGIN=https://play.example.com \
 VITE_PARTY_HOST=liminal.account.partykit.dev \
 pnpm build
+pnpm check:csp
 ```
 
 The static output is `client/dist`. The build also generates `robots.txt`,
 `sitemap.xml`, `llms.txt`, and `_headers`. The latter contains security/cache
 rules and a CSP whose `connect-src` is restricted to the configured PartyKit
-hostname.
+hostname. Every inline script in the final HTML is authorized by its exact
+SHA-256 hash; `script-src` does not use `unsafe-inline`.
 
 ## PartyKit
 

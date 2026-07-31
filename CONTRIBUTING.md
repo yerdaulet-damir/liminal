@@ -5,8 +5,9 @@ changes are easiest to review.
 
 ## Before you start
 
-- Read `AGENTS.md`. Its authority, protocol, and determinism rules are hard
-  constraints, not style suggestions.
+- Read the architecture and determinism summary in
+  [`README.md`](README.md#why-two-players-never-desync). Server authority,
+  typed wire messages, and seeded generation are hard constraints.
 - Open an issue before a large feature, stack change, wire-protocol change, or
   asset replacement.
 - Do not add assets without documented provenance and redistribution rights.

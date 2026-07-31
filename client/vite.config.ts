@@ -1,8 +1,15 @@
+import { createHash } from "node:crypto";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { buildLlms, buildRobots, buildSitemap } from "./site-metadata.js";
 
-function buildHeaders(partyHost: string): string {
+function inlineScriptHashes(html: string): string[] {
+  return Array.from(html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi))
+    .filter(([, attributes]) => !/\bsrc\s*=/i.test(attributes ?? ""))
+    .map(([, , content]) => `'sha256-${createHash("sha256").update(content ?? "").digest("base64")}'`);
+}
+
+function buildHeaders(partyHost: string, scriptHashes: readonly string[]): string {
   const csp = [
     "default-src 'self'",
     "base-uri 'self'",
@@ -14,7 +21,7 @@ function buildHeaders(partyHost: string): string {
     "manifest-src 'self'",
     "media-src 'self' blob:",
     "object-src 'none'",
-    "script-src 'self'",
+    `script-src 'self' ${scriptHashes.join(" ")}`,
     "style-src 'self' 'unsafe-inline'",
     "worker-src 'self' blob:",
     "upgrade-insecure-requests",
@@ -38,7 +45,6 @@ function buildHeaders(partyHost: string): string {
 
 function siteMetadata(origin: string, partyHost: string): Plugin {
   const assets = new Map([
-    ["/_headers", buildHeaders(partyHost)],
     ["/robots.txt", buildRobots(origin)],
     ["/sitemap.xml", buildSitemap(origin)],
     ["/llms.txt", buildLlms(origin)],
@@ -55,10 +61,21 @@ function siteMetadata(origin: string, partyHost: string): Plugin {
         res.end(content);
       });
     },
-    generateBundle() {
-      for (const [path, source] of assets) {
-        this.emitFile({ type: "asset", fileName: path.slice(1), source });
-      }
+    generateBundle: {
+      order: "post",
+      handler(_options, bundle) {
+        const index = bundle["index.html"];
+        if (!index || index.type !== "asset") {
+          throw new Error("Cannot authorize inline scripts: the final index.html asset is missing");
+        }
+        const html =
+          typeof index.source === "string" ? index.source : Buffer.from(index.source).toString("utf8");
+        const hashes = inlineScriptHashes(html);
+        this.emitFile({ type: "asset", fileName: "_headers", source: buildHeaders(partyHost, hashes) });
+        for (const [path, source] of assets) {
+          this.emitFile({ type: "asset", fileName: path.slice(1), source });
+        }
+      },
     },
   };
 }
