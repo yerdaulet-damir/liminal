@@ -13,8 +13,8 @@
     "@liminal/shared": "workspace:*"
   },
   "devDependencies": {
-    "partykit": "^0.0.111",
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.8"
+    "partykit": "^0.0.115",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }
