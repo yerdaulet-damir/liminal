@@ -11,3 +11,4 @@ export * from "./items.js";
 export * from "./protocol.js";
 export * from "./lore.js";
 export * from "./dressing.js";
+export * from "./bestiary.js";

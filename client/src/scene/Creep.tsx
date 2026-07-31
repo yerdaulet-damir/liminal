@@ -3,9 +3,23 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useAnimations, useGLTF } from "@react-three/drei";
 import { SkeletonUtils } from "three-stdlib";
 import * as THREE from "three";
+import { creatureOf, type CreatureSkin } from "@liminal/shared";
 import type { Room } from "../net/useRoom.js";
 
-useGLTF.preload("/models/monster.glb");
+// Same rules, different body. Which one you meet is decided by the seed in shared/bestiary,
+// so both players are hunted by the same shape.
+const SKIN_URL: Record<CreatureSkin, string> = {
+  creep: "/models/monster.glb",
+  demon: "/models/monster_Demon.gltf",
+  "blue-demon": "/models/monster_BlueDemon.gltf",
+  orc: "/models/monster_Orc.gltf",
+};
+
+// Preloaded eagerly, all four. Loading the creature lazily once the seed has chosen means the
+// most important object in the scene is the last thing to arrive — and if that load stalls, the
+// player controller declared after it never mounts either. ~3.7 MB extra buys a monster that is
+// always there. (Worth revisiting with a manifest that preloads only the seed's pick.)
+Object.values(SKIN_URL).forEach((url) => useGLTF.preload(url));
 
 function findClip(names: string[], wanted: RegExp, fallback: RegExp): string | null {
   return (
@@ -16,11 +30,12 @@ function findClip(names: string[], wanted: RegExp, fallback: RegExp): string | n
   );
 }
 
-export function Creep({ room }: { room: Room }) {
+export function Creep({ room, seed }: { room: Room; seed: number }) {
   const ref = useRef<THREE.Group>(null);
   const target = useRef(new THREE.Vector3());
   const { camera } = useThree();
-  const { scene, animations } = useGLTF("/models/monster.glb");
+  const creature = creatureOf(seed, room.level) ?? { skin: "creep" as const, height: 2.3 };
+  const { scene, animations } = useGLTF(SKIN_URL[creature.skin]);
   const { cloned, scale } = useMemo(() => {
     const model = SkeletonUtils.clone(scene);
     model.traverse((object) => {
@@ -33,18 +48,20 @@ export function Creep({ room }: { room: Room }) {
     });
     const bounds = new THREE.Box3().setFromObject(model);
     const height = bounds.max.y - bounds.min.y;
-    return { cloned: model, scale: height > 0 ? 2.3 / height : 1 };
-  }, [scene]);
+    return { cloned: model, scale: height > 0 ? creature.height / height : 1 };
+  }, [scene, creature.height]);
   const { actions, names } = useAnimations(animations, ref);
   const currentClip = useRef<string | null>(null);
 
   const renderMood = (mood: string) => {
+    // one clip vocabulary across packs: the quadruped ships Walk1/Walk2/Sniff, the humanoids
+    // ship Walk/Run/Idle, so each mood asks for both spellings before falling back.
     const wanted =
       mood === "hunt"
-        ? findClip(names, /walk2/i, /walk/i)
+        ? findClip(names, /run|walk2/i, /walk/i)
         : mood === "stalk"
-          ? findClip(names, /walk1/i, /walk/i)
-          : findClip(names, /sniff/i, /idle/i);
+          ? findClip(names, /walk1|^walk$/i, /walk/i)
+          : findClip(names, /sniff|idle/i, /idle/i);
     if (wanted === currentClip.current) return;
     if (currentClip.current) actions[currentClip.current]?.fadeOut(0.25);
     const action = wanted ? actions[wanted] : undefined;

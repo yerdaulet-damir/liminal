@@ -241,7 +241,7 @@ Everything shipped here is free and credited. No stock slop, no ripped assets.
 | What | Source | License |
 |---|---|---|
 | Player characters (Knight, Hooded Rogue) | [KayKit Adventurers](https://github.com/KayKit-Game-Assets) | CC0 |
-| The creature (rigged, 17 clips) | Quaternius Ultimate Monsters | CC0 |
+| The creature — four bodies (Hound, Skin-Stealer, Drowned, Hollow) | Quaternius Ultimate Monsters | CC0 |
 | Furniture, crates, barrels | KayKit Furniture Bits + Dungeon Remastered | CC0 |
 | Wallpaper, carpet, ceiling, concrete, pool tile | [ambientCG](https://ambientcg.com) | CC0 |
 | Dead Mall terrazzo and shutter textures | Generated for this project with OpenAI image generation | Project asset |

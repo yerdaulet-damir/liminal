@@ -89,7 +89,7 @@ export function Game({ name, roomId, seat }: { name: string; roomId: string; sea
           <Props seed={seed} worldLevel={level} artLevel={artLevel} />
           <Dressing seed={seed} worldLevel={level} artLevel={artLevel} />
           <Keys seed={seed} room={room} />
-          <Actors room={room} seat={mySeat} />
+          <Actors room={room} seed={seed} seat={mySeat} />
           <DevLook />
           <Player
             key={level}

@@ -21,6 +21,7 @@ shot-*.jpg
 shot-*.jpeg
 /frame*.txt
 /shot*.jpeg
+/shared/scout.mjs
 
 # Private agent configuration and internal working documents
 .claude/

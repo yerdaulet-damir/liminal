@@ -6,7 +6,7 @@ import { MallWatcher } from "./DeadMall/MallWatcher.js";
 import { RemotePlayer } from "./RemotePlayer.js";
 import { useEntityAudio } from "./useEntityAudio.js";
 
-export function Actors({ room, seat = 0 }: { room: Room; seat?: number }) {
+export function Actors({ room, seed, seat = 0 }: { room: Room; seed: number; seat?: number }) {
   useEntityAudio(room, seat);
   const others = room.ids.filter((id) => id !== room.welcome?.selfId);
   return (
@@ -14,7 +14,7 @@ export function Actors({ room, seat = 0 }: { room: Room; seat?: number }) {
       {others.map((id, index) => (
         <RemotePlayer key={id} id={id} room={room} slot={index} />
       ))}
-      {(room.level === 0 || room.level === 1) && <Creep room={room} />}
+      {(room.level === 0 || room.level === 1) && <Creep room={room} seed={seed} />}
       {room.level === 3 && <MallWatcher room={room} />}
     </>
   );
