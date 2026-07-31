@@ -14,7 +14,13 @@ import {
   type PlayerState,
 } from "@liminal/shared";
 import { ChatStore } from "./chatState.js";
-import { partyHost, stableSocketId } from "./socketConfig.js";
+import {
+  clearResumeToken,
+  partyHost,
+  readResumeToken,
+  stableSocketId,
+  storeResumeToken,
+} from "./socketConfig.js";
 
 export interface RoomState {
   players: PlayerState[];
@@ -23,7 +29,7 @@ export interface RoomState {
 
 export interface Room {
   welcome: { selfId: string; seed: number } | null;
-  admissionError: "room-full" | null;
+  admissionError: "room-full" | "session-invalid" | "room-unavailable" | null;
   stateRef: React.MutableRefObject<RoomState | null>;
   ids: string[];
   phase: Phase;
@@ -60,24 +66,32 @@ export function useRoom(roomId: string, name: string, seat = 0): Room {
 
   useEffect(() => {
     const chat = new ChatStore();
+    const sessionScope = `game.${roomId}.${seat}`;
     lastVersionRef.current = 0;
     const ps = new PartySocket({
       host: partyHost(),
       room: roomId,
-      id: stableSocketId(`game.${roomId}.${seat}`),
+      id: stableSocketId(sessionScope),
       maxEnqueuedMessages: 0,
     });
     socketRef.current = ps;
 
-    ps.addEventListener("open", () =>
-      ps.send(encode({ t: "join", name, lastVersion: lastVersionRef.current })),
-    );
+    ps.addEventListener("open", () => {
+      const resumeToken = readResumeToken(sessionScope);
+      ps.send(encode({
+        t: "join",
+        name,
+        lastVersion: lastVersionRef.current,
+        ...(resumeToken ? { resumeToken } : {}),
+      }));
+    });
     ps.addEventListener("message", (e: MessageEvent) => {
       if (typeof e.data !== "string") return;
       const msg = parseServerMsg(e.data);
       if (!msg) return;
       if (msg.t === "welcome") {
         setAdmissionError(null);
+        storeResumeToken(sessionScope, msg.resumeToken);
         selfIdRef.current = msg.selfId;
         setWelcome({ selfId: msg.selfId, seed: msg.seed });
       } else if (msg.t === "state") {
@@ -106,6 +120,11 @@ export function useRoom(roomId: string, name: string, seat = 0): Room {
       } else if (msg.t === "room_full") {
         setAdmissionError("room-full");
         ps.close(1000, "room full");
+        if (socketRef.current === ps) socketRef.current = null;
+      } else if (msg.t === "session_invalid" || msg.t === "room_unavailable") {
+        if (msg.t === "session_invalid") clearResumeToken(sessionScope);
+        setAdmissionError(msg.t === "session_invalid" ? "session-invalid" : "room-unavailable");
+        ps.close(1000, msg.t);
         if (socketRef.current === ps) socketRef.current = null;
       }
     });

@@ -6,15 +6,27 @@ export type RoomCommand =
   | { kind: "disconnect"; connection: Party.Connection }
   | { kind: "message"; senderId: string; message: ClientMsg };
 
-const MAX_PENDING_COMMANDS = 256;
+const MAX_DISCRETE_COMMANDS = 64;
+const MAX_DISCRETE_PER_SENDER = 8;
 
 export class CommandQueue {
   private lifecycle: RoomCommand[] = [];
-  private pending: RoomCommand[] = [];
+  private discrete: RoomCommand[] = [];
+  private readonly discreteBySender = new Map<string, number>();
+  private readonly moves = new Map<string, Extract<RoomCommand, { kind: "message" }>>();
 
   enqueue(command: RoomCommand): boolean {
-    if (this.pending.length >= MAX_PENDING_COMMANDS) return false;
-    this.pending.push(command);
+    if (command.kind !== "message") return false;
+    if (command.message.t === "move") {
+      this.moves.set(command.senderId, command);
+      return true;
+    }
+    const senderCount = this.discreteBySender.get(command.senderId) ?? 0;
+    if (senderCount >= MAX_DISCRETE_PER_SENDER || this.discrete.length >= MAX_DISCRETE_COMMANDS) {
+      return false;
+    }
+    this.discrete.push(command);
+    this.discreteBySender.set(command.senderId, senderCount + 1);
     return true;
   }
 
@@ -23,13 +35,15 @@ export class CommandQueue {
   }
 
   drain(): RoomCommand[] {
-    const commands = [...this.lifecycle, ...this.pending];
+    const commands = [...this.lifecycle, ...this.discrete, ...this.moves.values()];
     this.lifecycle = [];
-    this.pending = [];
+    this.discrete = [];
+    this.discreteBySender.clear();
+    this.moves.clear();
     return commands;
   }
 
   get size(): number {
-    return this.lifecycle.length + this.pending.length;
+    return this.lifecycle.length + this.discrete.length + this.moves.size;
   }
 }

@@ -19,6 +19,9 @@ export interface PlayerState {
   noise: number;
   /** True when that noise actually reaches the creature. Loud is survivable; heard is not. */
   heard: boolean;
+  /** Effective server-authoritative flashlight state and remaining level budget. */
+  lit: boolean;
+  flashlightS: number;
 }
 
 export interface EntityState {
@@ -37,14 +40,14 @@ export interface ChatMessage {
 export type Phase = "playing" | "won" | "lost";
 
 export type ClientMsg =
-  | { t: "join"; name: string; lastVersion: number }
+  | { t: "join"; name: string; lastVersion: number; resumeToken?: string }
   | { t: "move"; x: number; z: number; ry: number; lit?: boolean; mic?: number }
   | { t: "grab"; id: number }
   | { t: "restart" }
   | { t: "chat"; text: string };
 
 export type ServerMsg =
-  | { t: "welcome"; selfId: string; seed: number; version: number }
+  | { t: "welcome"; selfId: string; seed: number; version: number; resumeToken: string }
   | {
       t: "state";
       version: number;
@@ -57,7 +60,9 @@ export type ServerMsg =
     }
   | { t: "chat_state"; version: number; messages: ChatMessage[] }
   | { t: "chat"; message: ChatMessage }
-  | { t: "room_full" };
+  | { t: "room_full" }
+  | { t: "session_invalid" }
+  | { t: "room_unavailable" };
 
 export type MatchClientMsg =
   | { t: "find_match" }
@@ -80,7 +85,9 @@ const isNum = (value: unknown): value is number =>
 const isVersion = (value: unknown): value is number =>
   isNum(value) && Number.isInteger(value) && value >= 0;
 const isRoomId = (value: unknown): value is string =>
-  typeof value === "string" && value.length > 0 && value.length <= 128;
+  typeof value === "string" && /^[A-Za-z0-9_-]{20,128}$/.test(value);
+const isToken = (value: unknown): value is string =>
+  typeof value === "string" && /^[A-Za-z0-9_-]{32,128}$/.test(value);
 
 function decodeObject(raw: string, maxLength: number): JsonObject | null {
   if (raw.length > maxLength) return null;
@@ -107,6 +114,7 @@ function parsePlayer(value: unknown): PlayerState | null {
   }
   const noise = isNum(value.noise) ? Math.max(0, Math.min(1, value.noise)) : 0;
   const heard = value.heard === true;
+  if (typeof value.lit !== "boolean" || !isNum(value.flashlightS)) return null;
   return {
     id: value.id,
     name: value.name,
@@ -117,6 +125,8 @@ function parsePlayer(value: unknown): PlayerState | null {
     reviveP: value.reviveP,
     noise,
     heard,
+    lit: value.lit,
+    flashlightS: Math.max(0, value.flashlightS),
   };
 }
 
@@ -172,7 +182,13 @@ export function parseClientMsg(raw: string): ClientMsg | null {
   const data = decodeObject(raw, CLIENT_FRAME_MAX);
   if (!data) return null;
   if (data.t === "join" && typeof data.name === "string" && isVersion(data.lastVersion)) {
-    return { t: "join", name: data.name.slice(0, 24), lastVersion: data.lastVersion };
+    if (data.resumeToken !== undefined && !isToken(data.resumeToken)) return null;
+    return {
+      t: "join",
+      name: data.name.slice(0, 24),
+      lastVersion: data.lastVersion,
+      ...(isToken(data.resumeToken) ? { resumeToken: data.resumeToken } : {}),
+    };
   }
   if (data.t === "move" && isNum(data.x) && isNum(data.z) && isNum(data.ry)) {
     const mic = isNum(data.mic) ? Math.max(0, Math.min(1, data.mic)) : 0;
@@ -194,9 +210,16 @@ export function parseServerMsg(raw: string): ServerMsg | null {
     data.t === "welcome" &&
     typeof data.selfId === "string" &&
     isNum(data.seed) &&
-    isVersion(data.version)
+    isVersion(data.version) &&
+    isToken(data.resumeToken)
   ) {
-    return { t: "welcome", selfId: data.selfId, seed: data.seed, version: data.version };
+    return {
+      t: "welcome",
+      selfId: data.selfId,
+      seed: data.seed,
+      version: data.version,
+      resumeToken: data.resumeToken,
+    };
   }
   if (data.t === "state") return parseState(data);
   if (data.t === "chat") {
@@ -208,7 +231,9 @@ export function parseServerMsg(raw: string): ServerMsg | null {
     if (messages.some((message) => message === null) || messages.length > CHAT_HISTORY_MAX) return null;
     return { t: "chat_state", version: data.version, messages: messages as ChatMessage[] };
   }
-  return data.t === "room_full" ? { t: "room_full" } : null;
+  if (data.t === "room_full") return { t: "room_full" };
+  if (data.t === "session_invalid") return { t: "session_invalid" };
+  return data.t === "room_unavailable" ? { t: "room_unavailable" } : null;
 }
 
 export function parseMatchClientMsg(raw: string): MatchClientMsg | null {

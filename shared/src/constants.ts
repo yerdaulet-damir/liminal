@@ -47,9 +47,9 @@ export const SUSPICION_DECAY_EVERY_S = 4;
 export const HEAR_RANGE = 25;
 
 // Anti-teleport: the room clamps each player's requested position to a plausible step per tick.
-// Generous (3x sprint) so jitter and batched packets never rubber-band an honest player, but a
-// scripted client can no longer cross the level in one message.
-export const MAX_MOVE_PER_TICK_FACTOR = 3;
+// A 50% catch-up allowance absorbs one dropped/batched input without granting cheat clients a
+// second movement mode. Requests farther ahead converge over later authoritative ticks.
+export const MAX_MOVE_PER_TICK_FACTOR = 1.5;
 
 // Down / revive (2-player death rule).
 export const REVIVE_DIST = 1.5;
