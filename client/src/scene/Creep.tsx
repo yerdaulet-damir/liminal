@@ -15,12 +15,6 @@ const SKIN_URL: Record<CreatureSkin, string> = {
   orc: "/models/monster_Orc.gltf",
 };
 
-// Preloaded eagerly, all four. Loading the creature lazily once the seed has chosen means the
-// most important object in the scene is the last thing to arrive — and if that load stalls, the
-// player controller declared after it never mounts either. ~3.7 MB extra buys a monster that is
-// always there. (Worth revisiting with a manifest that preloads only the seed's pick.)
-Object.values(SKIN_URL).forEach((url) => useGLTF.preload(url));
-
 function findClip(names: string[], wanted: RegExp, fallback: RegExp): string | null {
   return (
     names.find((name) => wanted.test(name)) ??

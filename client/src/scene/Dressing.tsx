@@ -1,7 +1,7 @@
 // Doors that lead nowhere and people who are still here. Placement is deterministic (shared),
 // so both players walk past the same wrong thing in the same wrong position.
 
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import { SkeletonUtils } from "three-stdlib";
 import * as THREE from "three";
@@ -22,8 +22,6 @@ const FIGURE_URLS = [
   "/models/figure_Casual.glb",
   "/models/figure_Punk.glb",
 ];
-
-[...Object.values(DOOR_URL), ...FIGURE_URLS].forEach((u) => useGLTF.preload(u));
 
 export function Dressing({
   seed,
@@ -50,12 +48,14 @@ export function Dressing({
 
   return (
     <group>
-      {dressing.doors.map((d, i) => (
-        <Model key={`d${i}`} url={DOOR_URL[d.kind]} x={d.x} z={d.z} rotY={d.rotY} height={2.1} />
-      ))}
-      {dressing.figures.map((f, i) => (
-        <Figure key={`f${i}`} url={FIGURE_URLS[f.model % FIGURE_URLS.length]!} place={f} />
-      ))}
+      <Suspense fallback={null}>
+        {dressing.doors.map((d, i) => (
+          <Model key={`d${i}`} url={DOOR_URL[d.kind]} x={d.x} z={d.z} rotY={d.rotY} height={2.1} />
+        ))}
+        {dressing.figures.map((f, i) => (
+          <Figure key={`f${i}`} url={FIGURE_URLS[f.model % FIGURE_URLS.length]!} place={f} />
+        ))}
+      </Suspense>
       <Smilers places={dressing.smilers} />
     </group>
   );

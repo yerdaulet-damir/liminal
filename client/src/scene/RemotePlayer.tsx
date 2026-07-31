@@ -6,7 +6,6 @@ import * as THREE from "three";
 import type { Room } from "../net/useRoom.js";
 
 const CHARACTERS = ["/models/player1.glb", "/models/player2.glb"];
-CHARACTERS.forEach((url) => useGLTF.preload(url));
 
 function findClip(names: string[], wanted: RegExp, fallback: RegExp): string | null {
   return (

@@ -1,7 +1,7 @@
 // Set dressing — the "someone was here" layer. Furniture (KayKit CC0) and wall graffiti,
 // all scattered deterministically from the seed: both players see identical decay.
 
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { CELL, makeRng, type PropKind } from "@liminal/shared";
@@ -19,7 +19,6 @@ const PROP_URL: Record<PropKind, string> = {
   crates: "/models/crates_stacked.glb",
   boxstack: "/models/box_stacked.glb",
 };
-Object.values(PROP_URL).forEach((u) => useGLTF.preload(u));
 
 const GRAFFITI = [
   "IT HEARS YOU",
@@ -112,9 +111,11 @@ export function Props({
 
   return (
     <group>
-      {items.props.map((p, i) => (
-        <Prop key={i} {...p} />
-      ))}
+      <Suspense fallback={null}>
+        {items.props.map((p, i) => (
+          <Prop key={i} {...p} />
+        ))}
+      </Suspense>
       {items.tags.map((t, i) => (
         <Graffiti key={i} {...t} />
       ))}
