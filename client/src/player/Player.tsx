@@ -6,28 +6,65 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { PointerLockControls } from "@react-three/drei";
 import * as THREE from "three";
 import {
-  CROUCH_SPEED,
   EYE_HEIGHT,
   PLAYER_RADIUS,
-  SPRINT_CD_MS,
   SPRINT_MS,
-  SPRINT_SPEED,
   TICK_MS,
-  WALK_SPEED,
   pushOutOfCircles,
   resolveMove,
+  type Maze,
+  type MovementMode,
+  type PropPlacement,
 } from "@liminal/shared";
 import { setThinWallDistance } from "../audio/ambience.js";
+import { micLoudness } from "../audio/mic.js";
 import { levelWorld } from "../scene/levelWorld.js";
 import { flashlightIntentFor, resetFlashlightIntent } from "./flashlight.js";
 import { bindingFor, readSeatInput, TURN_RATE } from "./inputScheme.js";
-import { micLoudness } from "../audio/mic.js";
+import { speedForMovementMode, tickMovementMode } from "./movementMode.js";
 
 function isEditableTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
     (target.matches("input, textarea, select") || target.isContentEditable)
   );
+}
+
+function setMovementVectors(
+  camera: THREE.Camera,
+  fwd: number,
+  strafe: number,
+  dir: THREE.Vector3,
+  right: THREE.Vector3,
+  move: THREE.Vector3,
+): boolean {
+  camera.getWorldDirection(dir);
+  dir.y = 0;
+  dir.normalize();
+  right.set(-dir.z, 0, dir.x);
+  move.set(0, 0, 0).addScaledVector(dir, fwd).addScaledVector(right, strafe);
+  if (move.lengthSq() > 0) move.normalize();
+  return move.lengthSq() > 0;
+}
+
+function resolvePlayerStep(
+  maze: Maze,
+  props: readonly PropPlacement[],
+  pos: { x: number; z: number },
+  move: THREE.Vector3,
+  speed: number,
+  dt: number,
+): { x: number; z: number } {
+  const step = speed * Math.min(dt, 0.05);
+  const walls = resolveMove(
+    maze,
+    pos.x,
+    pos.z,
+    pos.x + move.x * step,
+    pos.z + move.z * step,
+    PLAYER_RADIUS,
+  );
+  return pushOutOfCircles(walls.x, walls.z, PLAYER_RADIUS, props);
 }
 
 export function Player({
@@ -46,7 +83,14 @@ export function Player({
   seat?: number;
   /** the wall only hums once the keys are found */
   unlocked?: boolean;
-  sendMove: (x: number, z: number, ry: number, lit?: boolean, mic?: number) => void;
+  sendMove: (
+    x: number,
+    z: number,
+    ry: number,
+    lit?: boolean,
+    mic?: number,
+    mode?: MovementMode,
+  ) => void;
   /** reads the latest server snapshot for this player; never predicted locally */
   readAuthoritativeLit: () => boolean;
   /** blocks movement (round over OR you are down) */
@@ -63,6 +107,10 @@ export function Player({
   const yaw = useRef(0);
   const sendAcc = useRef(0);
   const sprint = useRef({ budgetMs: SPRINT_MS, cdMs: 0 });
+  const movementMode = useRef<MovementMode>("walk");
+  const dir = useRef(new THREE.Vector3());
+  const right = useRef(new THREE.Vector3());
+  const move = useRef(new THREE.Vector3());
 
   useEffect(() => {
     camera.position.set(maze.start.x, EYE_HEIGHT, maze.start.z);
@@ -93,16 +141,7 @@ export function Player({
     };
   }, [camera, maze, level, seat, binding, flashlight]);
 
-  // On restart (round ended → playing) snap back to the spawn, mirroring the server's reset.
-  const wasEnded = useRef(false);
-  useFrame((_, dt) => {
-    if (roundEnded) wasEnded.current = true;
-    if (frozen) return;
-    if (wasEnded.current) {
-      wasEnded.current = false;
-      pos.current = { x: maze.start.x, z: maze.start.z };
-      camera.position.set(maze.start.x, EYE_HEIGHT, maze.start.z);
-    }
+  const advanceMovement = (dt: number): void => {
     const input = readSeatInput(seat, keys.current);
     // seats without a mouse turn the body with their own keys/stick; the mouse owns yaw otherwise
     if (binding.tank && input.turn !== 0) {
@@ -110,55 +149,61 @@ export function Player({
       camera.rotation.set(0, yaw.current, 0);
     }
 
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
-    dir.y = 0;
-    dir.normalize();
-    const right = new THREE.Vector3(-dir.z, 0, dir.x); // cross(dir, up) — D strafes right
-
-    const move = new THREE.Vector3()
-      .addScaledVector(dir, input.fwd)
-      .addScaledVector(right, input.strafe);
-    if (move.lengthSq() > 0) move.normalize();
-
-    // crouch = slow + silent to the monster; sprint = 3 s budget, 5 s cooldown
     const dtMs = dt * 1000;
-    const sp = sprint.current;
-    let speed = WALK_SPEED;
-    if (input.crouch) speed = CROUCH_SPEED;
-    else if (input.sprint && sp.cdMs <= 0 && sp.budgetMs > 0 && move.lengthSq() > 0) {
-      speed = SPRINT_SPEED;
-      sp.budgetMs -= dtMs;
-      if (sp.budgetMs <= 0) sp.cdMs = SPRINT_CD_MS;
-    }
-    if (sp.cdMs > 0) {
-      sp.cdMs -= dtMs;
-      if (sp.cdMs <= 0) sp.budgetMs = SPRINT_MS;
-    } else if (speed !== SPRINT_SPEED && sp.budgetMs < SPRINT_MS) {
-      sp.budgetMs = Math.min(SPRINT_MS, sp.budgetMs + dtMs * 0.5); // slow refill when not drained
-    }
-
-    const step = speed * Math.min(dt, 0.05);
-    const walls = resolveMove(
-      maze,
-      pos.current.x,
-      pos.current.z,
-      pos.current.x + move.x * step,
-      pos.current.z + move.z * step,
-      PLAYER_RADIUS,
+    const moving = setMovementVectors(
+      camera,
+      input.fwd,
+      input.strafe,
+      dir.current,
+      right.current,
+      move.current,
     );
-    const next = pushOutOfCircles(walls.x, walls.z, PLAYER_RADIUS, props);
+    movementMode.current = tickMovementMode(
+      input.crouch,
+      input.sprint,
+      moving,
+      dtMs,
+      sprint.current,
+    );
+    const next = resolvePlayerStep(
+      maze,
+      props,
+      pos.current,
+      move.current,
+      speedForMovementMode(movementMode.current),
+      dt,
+    );
     pos.current = next;
     setThinWallDistance(
       unlocked ? Math.hypot(next.x - maze.thinWall.x, next.z - maze.thinWall.z) : Infinity,
       seat,
     );
     camera.position.set(next.x, EYE_HEIGHT, next.z);
+  };
 
+  // On restart (round ended → playing) snap back to the spawn, mirroring the server's reset.
+  const wasEnded = useRef(false);
+  useFrame((_, dt) => {
+    if (roundEnded) wasEnded.current = true;
+    if (frozen) return;
+    if (wasEnded.current) {
+      wasEnded.current = false;
+      pos.current.x = maze.start.x;
+      pos.current.z = maze.start.z;
+      camera.position.set(maze.start.x, EYE_HEIGHT, maze.start.z);
+    }
+    advanceMovement(dt);
     sendAcc.current += dt;
     if (sendAcc.current >= TICK_MS / 1000) {
       sendAcc.current = 0;
-      sendMove(next.x, next.z, Math.atan2(dir.x, dir.z), flashlight.requested, micLoudness());
+      sendMove(
+        pos.current.x,
+        pos.current.z,
+        Math.atan2(dir.current.x, dir.current.z),
+        flashlight.requested,
+        micLoudness(),
+        movementMode.current,
+      );
     }
   });
 
