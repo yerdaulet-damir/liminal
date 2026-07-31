@@ -1,7 +1,6 @@
 import type * as Party from "partykit/server";
-import { TICK_MS, encode, type ChatMessage, type PlayerState } from "@liminal/shared";
+import { COOP_PLAYER_COUNT, TICK_MS, encode, type ChatMessage, type PlayerState } from "@liminal/shared";
 
-const MAX_PLAYERS = 2;
 const RECONNECT_GRACE_TICKS = 30 * (1000 / TICK_MS);
 
 export interface AdmissionState {
@@ -60,7 +59,7 @@ export function admitJoin(
     connection.close(1008, "invalid session");
     return null;
   }
-  if (!playerId && state.players.size >= MAX_PLAYERS) {
+  if (!playerId && state.players.size >= COOP_PLAYER_COUNT) {
     connection.send(encode({ t: "room_full" }));
     connection.close(1008, "room full");
     return null;

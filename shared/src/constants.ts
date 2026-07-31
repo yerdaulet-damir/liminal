@@ -2,6 +2,7 @@
 
 export const TICK_HZ = 15;
 export const TICK_MS = 1000 / TICK_HZ;
+export const COOP_PLAYER_COUNT = 2;
 
 // Maze dimensions (cells) and world scale (units per cell).
 export const MAZE_COLS = 12;

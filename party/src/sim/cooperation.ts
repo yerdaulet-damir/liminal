@@ -20,7 +20,7 @@ export function tickRevives(players: PlayerState[], dt: number): void {
 export function canNoclip(players: PlayerState[], maze: Maze, keyCount: number): boolean {
   if (keyCount > 0) return false;
   const wall = maze.thinWall;
-  const inside = players.some(
+  const inside = players.length > 0 && players.every(
     (player) =>
       Math.abs(player.x - wall.x) < wall.w / 2 + 0.2 &&
       Math.abs(player.z - wall.z) < wall.d / 2 + 0.2,

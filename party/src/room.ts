@@ -1,6 +1,6 @@
 import type * as Party from "partykit/server";
 import {
-  FLASHLIGHT_S, MIC_GATE, PICKUP_DIST, SPAWN_GRACE_S, TICK_MS,
+  COOP_PLAYER_COUNT, FLASHLIGHT_S, MIC_GATE, PICKUP_DIST, SPAWN_GRACE_S, TICK_MS,
   creakyCells, encode, generateLevel, hashSeed, levelSeed,
   makeDirector, makeMonster, makeRng, parseClientMsg, placeKeys, placeProps,
   type ClientMsg, type Director, type KeyItem, type Maze, type MonsterState,
@@ -301,19 +301,24 @@ export default class GameRoom implements Party.Server {
   private simulate(): void {
     const all = Array.from(this.players.values());
     if (all.length === 0) return;
+    for (const player of all) {
+      if (player.down) this.flashlights.disconnect(player.id);
+    }
     this.flashlights.tick(DT, this.level === 1);
     for (const p of all) Object.assign(p, this.flashlights.state(p.id));
     const active = all.filter((player) => this.connections.has(player.id));
     if (active.length === 0) return;
+    // Cooperative outcomes pause through reconnect grace; after expiry the open seat must refill.
+    const hasCoopQuorum = all.length === COOP_PLAYER_COUNT && active.length === COOP_PLAYER_COUNT;
     this.runS += DT;
     tickRevives(active, DT);
 
     const standing = active.filter((p) => !p.down);
     if (standing.length === 0) {
-      this.setPhase("lost");
+      if (hasCoopQuorum) this.setPhase("lost");
       return;
     }
-    if (canNoclip(standing, this.maze, this.keys.length)) {
+    if (hasCoopQuorum && standing.length === COOP_PLAYER_COUNT && canNoclip(standing, this.maze, this.keys.length)) {
       if (this.level >= LAST_LEVEL) this.setPhase("won");
       else this.enterLevel(this.level + 1);
       return;
@@ -353,7 +358,7 @@ export default class GameRoom implements Party.Server {
   }
 
   private tickMonster(standing: PlayerState[], rule: ReturnType<typeof levelDef>["rule"]): void {
-    tickMonsterEncounter({
+    const downed = tickMonsterEncounter({
       standing,
       monster: this.monster,
       maze: this.maze,
@@ -364,6 +369,7 @@ export default class GameRoom implements Party.Server {
       dt: DT,
       rng: this.rng,
     });
+    if (downed) this.clearPlayerTransient(downed.id);
   }
 
   private clearPlayerTransient(id: string): void {

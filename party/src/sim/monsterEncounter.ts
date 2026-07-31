@@ -31,7 +31,7 @@ const sensed = (player: PlayerState): SensedPlayer => ({
   lit: player.lit,
 });
 
-export function tickMonsterEncounter(options: EncounterOptions): void {
+export function tickMonsterEncounter(options: EncounterOptions): PlayerState | null {
   let nearest = options.standing[0]!;
   let nearestDist = Infinity;
   let loudest: PlayerState | null = null;
@@ -71,10 +71,11 @@ export function tickMonsterEncounter(options: EncounterOptions): void {
     options.dt,
     options.rng,
   );
-  if (!caught) return;
+  if (!caught) return null;
   nearest.down = true;
   nearest.reviveP = 0;
   directorOnDown(options.director, options.rng);
   options.monster.lungeS = -1;
   options.monster.staggerS = 0;
+  return nearest;
 }

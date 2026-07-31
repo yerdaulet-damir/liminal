@@ -21,4 +21,16 @@ describe("authoritative flashlight budget", () => {
     lights.tick(10, false);
     expect(lights.state("p1")).toEqual({ lit: false, flashlightS: FLASHLIGHT_S });
   });
+
+  it("clears downed intent without consuming the preserved battery", () => {
+    const lights = new Flashlights();
+    lights.reset(["p1"]);
+    lights.request("p1", true);
+    lights.tick(1, true);
+    const remaining = lights.state("p1").flashlightS;
+
+    lights.disconnect("p1");
+    lights.tick(10, true);
+    expect(lights.state("p1")).toEqual({ lit: false, flashlightS: remaining });
+  });
 });

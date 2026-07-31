@@ -86,16 +86,19 @@ describe("GameRoom authority", () => {
     vi.useFakeTimers();
     const { server } = harness();
     const player = connection("p1");
+    const partner = connection("p2");
     join(server, player);
+    join(server, partner);
     vi.advanceTimersByTime(TICK_MS);
 
     Reflect.set(server, "level", 2);
     Reflect.set(server, "keys", []);
     const maze = Reflect.get(server, "maze") as Maze;
     const roster = Reflect.get(server, "players") as Map<string, { x: number; z: number }>;
-    const authoritativePlayer = roster.values().next().value!;
-    authoritativePlayer.x = maze.thinWall.x;
-    authoritativePlayer.z = maze.thinWall.z;
+    for (const authoritativePlayer of roster.values()) {
+      authoritativePlayer.x = maze.thinWall.x;
+      authoritativePlayer.z = maze.thinWall.z;
+    }
 
     expect(stateMessages(player).at(-1)?.level).toBe(0);
     vi.advanceTimersByTime(TICK_MS);
@@ -276,6 +279,92 @@ describe("GameRoom authority", () => {
     expect(disconnected).toMatchObject({ lit: false, noise: 0, heard: false });
     expect((Reflect.get(server, "mic") as Map<string, number>).has(secondId)).toBe(false);
     expect(Reflect.get(server, "level")).toBe(levelBefore);
+  });
+
+  it("pauses exit quorum during grace and advances only after both reconnect at the wall", () => {
+    vi.useFakeTimers();
+    const { server } = harness();
+    const first = connection("transport-1");
+    const second = connection("transport-2");
+    join(server, first);
+    join(server, second);
+    vi.advanceTimersByTime(TICK_MS);
+    const secondWelcome = vi.mocked(second.send).mock.calls
+      .map(([raw]) => (typeof raw === "string" ? parseServerMsg(raw) : null))
+      .find((message) => message?.t === "welcome");
+    if (secondWelcome?.t !== "welcome") throw new Error("missing second welcome");
+
+    Reflect.set(server, "level", 2);
+    Reflect.set(server, "keys", []);
+    const maze = Reflect.get(server, "maze") as Maze;
+    const roster = Reflect.get(server, "players") as Map<string, PlayerState>;
+    const transportPlayers = Reflect.get(server, "transportPlayers") as Map<string, string>;
+    roster.get(transportPlayers.get(first.id)!)!.x = maze.thinWall.x;
+    roster.get(transportPlayers.get(first.id)!)!.z = maze.thinWall.z;
+
+    server.onClose(second);
+    vi.advanceTimersByTime(TICK_MS);
+    expect(Reflect.get(server, "level")).toBe(2);
+
+    const resumed = connection("transport-2-resumed");
+    join(server, resumed, secondWelcome.resumeToken);
+    vi.advanceTimersByTime(TICK_MS);
+    for (const player of roster.values()) {
+      player.x = maze.thinWall.x;
+      player.z = maze.thinWall.z;
+    }
+    vi.advanceTimersByTime(TICK_MS);
+    expect(Reflect.get(server, "level")).toBe(3);
+  });
+
+  it("pauses loss quorum through disconnect grace and after reservation expiry", () => {
+    vi.useFakeTimers();
+    const { server } = harness();
+    const first = connection("transport-1");
+    const second = connection("transport-2");
+    join(server, first);
+    join(server, second);
+    vi.advanceTimersByTime(TICK_MS);
+    const secondWelcome = vi.mocked(second.send).mock.calls
+      .map(([raw]) => (typeof raw === "string" ? parseServerMsg(raw) : null))
+      .find((message) => message?.t === "welcome");
+    if (secondWelcome?.t !== "welcome") throw new Error("missing second welcome");
+    const transportPlayers = Reflect.get(server, "transportPlayers") as Map<string, string>;
+    const roster = Reflect.get(server, "players") as Map<string, PlayerState>;
+    const downed = roster.get(transportPlayers.get(first.id)!)!;
+    downed.down = true;
+
+    server.onClose(second);
+    vi.advanceTimersByTime(TICK_MS);
+    expect(Reflect.get(server, "phase")).toBe("playing");
+
+    const resumed = connection("transport-2-resumed");
+    join(server, resumed, secondWelcome.resumeToken);
+    vi.advanceTimersByTime(TICK_MS);
+    expect(downed.reviveP).toBeGreaterThan(0);
+    server.onClose(resumed);
+    vi.advanceTimersByTime(31_000);
+    expect(Reflect.get(server, "phase")).toBe("playing");
+    expect(roster.size).toBe(1);
+  });
+
+  it("turns off a downed flashlight without draining its remaining battery", () => {
+    vi.useFakeTimers();
+    const { server } = harness();
+    const player = connection("transport-1");
+    join(server, player);
+    vi.advanceTimersByTime(TICK_MS);
+    Reflect.set(server, "level", 1);
+    server.onMessage(encode({ t: "move", x: 2, z: 2, ry: 0, lit: true }), player);
+    vi.advanceTimersByTime(TICK_MS);
+    const roster = Reflect.get(server, "players") as Map<string, PlayerState>;
+    const downed = roster.values().next().value!;
+    const remaining = downed.flashlightS;
+    downed.down = true;
+
+    vi.advanceTimersByTime(TICK_MS * 5);
+    expect(downed.lit).toBe(false);
+    expect(downed.flashlightS).toBeCloseTo(remaining, 8);
   });
 
   it("clears the active-instance marker only after clean empty grace expiry", async () => {
