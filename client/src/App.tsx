@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { trackLandingView } from "./analytics.js";
 import { Lobby } from "./ui/Lobby.js";
 
 const Game = lazy(() => import("./Game.js").then((module) => ({ default: module.Game })));
@@ -15,6 +16,8 @@ interface Session {
 
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(trackLandingView, []);
 
   if (!session) {
     return <Lobby onPlay={(name, roomId, couch = false) => setSession({ name, roomId, couch })} />;

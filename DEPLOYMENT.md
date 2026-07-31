@@ -9,11 +9,20 @@ projects so a test worker cannot receive production players.
 ```dotenv
 VITE_PUBLIC_ORIGIN=https://play.example.com
 VITE_PARTY_HOST=liminal.account.partykit.dev
+# Optional; set both or neither
+VITE_POSTHOG_KEY=phc_public_project_token
+VITE_POSTHOG_HOST=https://eu.i.posthog.com
 ```
 
-Both variables are browser-visible. Never put secrets in a `VITE_*` variable.
+All four variables are browser-visible. Never put secrets in a `VITE_*` variable.
 Production builds reject missing values, HTTP origins, localhost, URL paths,
-and PartyKit hosts containing a scheme or port.
+PartyKit hosts containing a scheme or port, and half-configured PostHog analytics.
+
+PostHog is optional and is for acquisition/product funnels, not search ranking. Before enabling it,
+turn on **Cookieless server hash mode** and disable IP capture in the PostHog project settings. The
+client disables autocapture, pageview capture, person profiles, and session replay; it records only
+explicit funnel events. Nicknames, chat, room IDs/links, microphone data, and full URLs are never
+sent. `Do Not Track` is respected.
 
 ## Preflight
 
@@ -34,8 +43,8 @@ pnpm check:csp
 The static output is `client/dist`. The build also generates `robots.txt`,
 `sitemap.xml`, `llms.txt`, and `_headers`. The latter contains security/cache
 rules and a CSP whose `connect-src` is restricted to the configured PartyKit
-hostname. Every inline script in the final HTML is authorized by its exact
-SHA-256 hash; `script-src` does not use `unsafe-inline`.
+hostname and, when enabled, the configured PostHog ingestion origin. Every inline script in the
+final HTML is authorized by its exact SHA-256 hash; `script-src` does not use `unsafe-inline`.
 
 ## PartyKit
 
@@ -57,7 +66,7 @@ Connect the repository with these settings:
 - Build command: `pnpm install --frozen-lockfile && pnpm build`
 - Build output directory: `client/dist`
 - Node version: `22.14.0`
-- Environment variables: the two public variables above
+- Environment variables: the two required public variables above, plus both optional PostHog values
 
 Cloudflare should run builds only after GitHub CI passes. Keep production
 credentials in Cloudflare/PartyKit settings, never in repository files.
@@ -73,6 +82,8 @@ credentials in Cloudflare/PartyKit settings, never in repository files.
 4. Test Quick Play with two profiles and confirm a third player cannot enter the
    resulting gameplay room.
 5. Check browser console errors, PartyKit logs, and the final canonical/OG URLs.
+6. If PostHog is enabled, confirm `landing_view` and one game-start event arrive without URL,
+   nickname, chat, or room properties.
 
 Rollback the static client to the preceding Pages deployment and redeploy the
 preceding PartyKit commit if the smoke test fails. Keep compatible client/server

@@ -174,6 +174,10 @@ generated crawler files. `VITE_PARTY_HOST` is also required in production. See t
 preflight, Cloudflare Pages configuration, smoke test, and rollback procedure in
 [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
+Optional PostHog product analytics are cookieless and explicit-event-only: no autocapture, replay,
+person profiles, nickname, chat, room link, microphone data, or full URL. Configure the public
+`VITE_POSTHOG_KEY` and `VITE_POSTHOG_HOST` together; analytics remain a no-op when they are absent.
+
 ### How search engines and AI assistants see this
 
 The build emits, and the dev server serves, all of these (verified returning `200`):

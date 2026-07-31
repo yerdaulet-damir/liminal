@@ -120,7 +120,9 @@ export function JoinPanel({
         </span>
         <span aria-hidden="true">▯▯</span>
       </button>
-      <p className="landing__privacy">Microphone is optional. Audio never leaves your device.</p>
+      <p className="landing__privacy">
+        Microphone stays local. Anonymous analytics never include names, chat, or room links.
+      </p>
       <p className="landing__copied" role="status" aria-live="polite">
         {copied ? "Invite link copied. Send it to your friend." : "\u00a0"}
       </p>

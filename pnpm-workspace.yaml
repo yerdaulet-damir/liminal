@@ -4,5 +4,6 @@ packages:
   - client
 
 allowBuilds:
+  core-js: false
   esbuild: true
   workerd: true
