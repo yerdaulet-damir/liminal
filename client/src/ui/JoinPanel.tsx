@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { enableMic } from "../audio/mic.js";
+import { disableMic, enableMic } from "../audio/mic.js";
 import "./quick-play.css";
 
 type MicState = "off" | "on" | "denied";
@@ -33,13 +33,18 @@ export function JoinPanel({
   const [mic, setMic] = useState<MicState>("off");
   const isSearching = quickPlay.status === "searching";
 
-  const askMic = async () => {
+  const toggleMic = async () => {
+    if (mic === "on") {
+      disableMic();
+      setMic("off");
+      return;
+    }
     setMic((await enableMic()) ? "on" : "denied");
   };
 
   const micLabel =
     mic === "on"
-      ? "Microphone ready. It can hear you."
+      ? "Microphone on. Turn it off"
       : mic === "denied"
         ? "Microphone blocked. Footsteps still make noise."
         : "Let the creature hear your microphone";
@@ -65,7 +70,12 @@ export function JoinPanel({
         value={name}
         onChange={(event) => onNameChange(event.target.value)}
       />
-      <button className={`landing__mic landing__mic--${mic}`} type="button" onClick={() => void askMic()}>
+      <button
+        className={`landing__mic landing__mic--${mic}`}
+        type="button"
+        aria-pressed={mic === "on"}
+        onClick={() => void toggleMic()}
+      >
         <span className="landing__mic-dot" aria-hidden="true" />
         {micLabel}
       </button>
