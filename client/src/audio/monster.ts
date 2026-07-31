@@ -56,7 +56,11 @@ export const playRoar = (): void => sting("roar", 0.9);
 export const playScream = (): void => sting("scream", 0.8);
 
 /** Breathing loudness by distance — it is always somewhere. */
-export function setBreathDistance(d: number): void {
+const breathSeat = [Infinity, Infinity];
+
+export function setBreathDistance(dist: number, seat = 0): void {
+  breathSeat[seat] = dist;
+  const d = Math.min(breathSeat[0]!, breathSeat[1]!); // closest local player wins the speakers
   if (!breathGain || !ctx) return;
   const near = Math.max(0, 1 - d / 16);
   breathGain.gain.setTargetAtTime(near * 0.7, ctx.currentTime, 0.2);

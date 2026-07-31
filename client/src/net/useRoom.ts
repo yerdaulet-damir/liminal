@@ -39,7 +39,8 @@ export interface Room {
   sendChat: (text: string) => void;
 }
 
-export function useRoom(roomId: string, name: string): Room {
+/** `seat` separates two local players sharing one browser — each needs its own socket id. */
+export function useRoom(roomId: string, name: string, seat = 0): Room {
   const [welcome, setWelcome] = useState<Room["welcome"]>(null);
   const [admissionError, setAdmissionError] = useState<Room["admissionError"]>(null);
   const [ids, setIds] = useState<string[]>([]);
@@ -63,7 +64,7 @@ export function useRoom(roomId: string, name: string): Room {
     const ps = new PartySocket({
       host: partyHost(),
       room: roomId,
-      id: stableSocketId(`game.${roomId}`),
+      id: stableSocketId(`game.${roomId}.${seat}`),
       maxEnqueuedMessages: 0,
     });
     socketRef.current = ps;
@@ -110,7 +111,7 @@ export function useRoom(roomId: string, name: string): Room {
     });
 
     return () => ps.close();
-  }, [roomId, name]);
+  }, [roomId, name, seat]);
 
   const sendMove = useCallback((x: number, z: number, ry: number, lit = false, mic = 0) => {
     const socket = socketRef.current;

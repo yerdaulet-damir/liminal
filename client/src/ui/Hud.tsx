@@ -4,9 +4,12 @@
 import type React from "react";
 import { useEffect, useState } from "react";
 import type { Room } from "../net/useRoom.js";
-import { flashlight } from "../player/flashlight.js";
+import { bindingFor } from "../player/inputScheme.js";
+import { flashlightFor } from "../player/flashlight.js";
 
-export function Hud({ room }: { room: Room }) {
+export function Hud({ room, seat = 0 }: { room: Room; seat?: number }) {
+  const flashlight = flashlightFor(seat);
+  const tank = bindingFor(seat).tank; // the arrow-cluster seat has its own key legend
   const connected = !!room.welcome;
   const count = room.ids.length;
   // poll the flashlight store (it lives outside React on purpose)
@@ -40,17 +43,21 @@ export function Hud({ room }: { room: Room }) {
           <>
             <span style={S.sep}>·</span>
             <span style={{ color: flashlight.on ? "#f4e8a0" : "#6a6448" }}>
-              🔦 {batteryPct}% (F)
+              🔦 {batteryPct}% ({tank ? "." : "F"})
             </span>
           </>
         )}
         <span style={S.sep}>·</span>
-        <span style={S.dim}>walk over glowing keys · m chat · shift sprint · c crouch · esc cursor</span>
+        <span style={S.dim}>
+          {tank
+            ? "walk over glowing keys · ↑↓ walk · ←→ turn · right-shift sprint · / crouch"
+            : "walk over glowing keys · m chat · shift sprint · c crouch · esc cursor"}
+        </span>
       </div>
       {room.phase === "playing" && !room.selfDown && !room.partnerDown && (
         <div style={{ ...S.banner, bottom: 100, opacity: 0.75 }}>
           {room.keysLeft.length
-            ? `find ${room.keysLeft.length} more key${room.keysLeft.length > 1 ? "s" : ""} in the dead ends — walk over the glow to collect`
+            ? `find ${room.keysLeft.length} more key${room.keysLeft.length > 1 ? "s" : ""} where the halls narrow — walk over the glow`
             : "the wall is thin now. listen for the hum."}
         </div>
       )}

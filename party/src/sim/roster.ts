@@ -39,6 +39,8 @@ export function admitConnection(state: AdmissionState, connection: Party.Connect
       ry: 0,
       down: false,
       reviveP: 0,
+      noise: 0,
+      heard: false,
     });
   }
   state.connections.set(connection.id, connection);

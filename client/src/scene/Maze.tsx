@@ -2,6 +2,7 @@
 // Materials: real CC0 PBR color maps (ambientCG) — yellowed wallpaper, damp carpet, office tiles.
 
 import { useMemo, useRef } from "react";
+import { levelWorld } from "./levelWorld.js";
 import { useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
@@ -61,7 +62,7 @@ export function Maze({
   /** All keys found — only then does the thin wall start to flicker and let you through. */
   unlocked?: boolean;
 }) {
-  const maze = useMemo(() => generateMaze(seed), [seed]);
+  const maze = useMemo(() => levelWorld(seed, level).maze, [seed, level]);
   const worldW = MAZE_COLS * CELL;
   const worldD = MAZE_ROWS * CELL;
   const theme = THEMES[Math.min(level, THEMES.length - 1)]!;

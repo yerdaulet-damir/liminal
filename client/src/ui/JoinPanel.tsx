@@ -5,6 +5,8 @@ import "./quick-play.css";
 type MicState = "off" | "on" | "denied";
 type QuickPlayState = {
   status: "idle" | "searching" | "matched";
+  /** Open games right now, including yours while you wait. */
+  waiting: number;
   findMatch: () => void;
   cancelMatch: () => void;
 };
@@ -15,6 +17,7 @@ interface JoinPanelProps {
   name: string;
   quickPlay: QuickPlayState;
   onNameChange: (name: string) => void;
+  onPlayCouch: () => void;
   onPlayPrivate: () => void;
 }
 
@@ -24,6 +27,7 @@ export function JoinPanel({
   name,
   quickPlay,
   onNameChange,
+  onPlayCouch,
   onPlayPrivate,
 }: JoinPanelProps) {
   const [mic, setMic] = useState<MicState>("off");
@@ -77,7 +81,9 @@ export function JoinPanel({
         <div className="landing__search" role="status" aria-live="polite">
           <span>
             <i aria-hidden="true" />
-            Listening for another player…
+            {quickPlay.waiting > 1
+              ? `Your door is open. ${quickPlay.waiting} doors open right now…`
+              : "Your door is open. Waiting for someone to walk in…"}
           </span>
           <button type="button" onClick={quickPlay.cancelMatch}>
             Cancel
@@ -92,11 +98,18 @@ export function JoinPanel({
         >
           <span>
             <strong>Quick play</strong>
-            Enter with a random stranger
+            Open your game to a stranger, or walk into theirs
           </span>
           <span aria-hidden="true">→</span>
         </button>
       )}
+      <button className="landing__quick" type="button" onClick={onPlayCouch}>
+        <span>
+          <strong>One laptop, two players</strong>
+          Split the screen. P1 mouse + WASD, P2 arrows or a gamepad
+        </span>
+        <span aria-hidden="true">▯▯</span>
+      </button>
       <p className="landing__privacy">Microphone is optional. Audio never leaves your device.</p>
       <p className="landing__copied" role="status" aria-live="polite">
         {copied ? "Invite link copied. Send it to your friend." : "\u00a0"}

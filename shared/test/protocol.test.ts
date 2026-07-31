@@ -29,7 +29,7 @@ describe("game protocol", () => {
       level: 0,
       outage: false,
       keysLeft: [1],
-      players: [{ id: "p1", name: "one", x: 1, z: 2, ry: 0, down: false, reviveP: 0 }],
+      players: [{ id: "p1", name: "one", x: 1, z: 2, ry: 0, down: false, reviveP: 0, noise: 0, heard: false }],
       entity: { x: 3, z: 4, mood: "stalk" },
     },
     {
@@ -75,7 +75,7 @@ describe("matchmaking protocol", () => {
     { t: "match_ack", roomId: "room-1" },
   ];
   const serverMessages: MatchServerMsg[] = [
-    { t: "match_waiting" },
+    { t: "match_waiting", waiting: 2 },
     { t: "match_found", roomId: "room-1" },
   ];
 
@@ -85,6 +85,13 @@ describe("matchmaking protocol", () => {
 
   it.each(serverMessages)("round-trips server message $t", (message) => {
     expect(parseMatchServerMsg(encode(message))).toEqual(message);
+  });
+
+  it("defaults a missing waiting count to one open door", () => {
+    expect(parseMatchServerMsg(JSON.stringify({ t: "match_waiting" }))).toEqual({
+      t: "match_waiting",
+      waiting: 1,
+    });
   });
 
   it("rejects unknown tags and invalid acknowledgements", () => {

@@ -27,7 +27,10 @@ export const LUNGE_S = 0.8;
 export const STAGGER_S = 2; // missed-lunge recovery = the escape window
 
 // Director (Alien menace + L4D cycle + Eyeless Dog suspicion — see RESEARCH).
-export const SPAWN_GRACE_S = 90; // monster inert at run start — emptiness is the product
+// Grace at the start of a level: the creature cannot catch you yet. Kept SHORT on purpose —
+// "corridors where nothing happens" is the #1 boredom complaint players make about this genre,
+// and a free browser game has no sunk cost to spend on dead air (docs/RESEARCH.md §player voices).
+export const SPAWN_GRACE_S = 20;
 export const HUNT_GRACE_S = 3; // roar first, kills after
 export const HUNT_MAX_S = 30;
 export const STALK_TIMEOUT_S = 45;
@@ -42,6 +45,11 @@ export const MENACE_RETREAT_AT = 70; // pressure valve
 export const SUSPICION_HUNT_AT = 9; // Eyeless Dog
 export const SUSPICION_DECAY_EVERY_S = 4;
 export const HEAR_RANGE = 25;
+
+// Anti-teleport: the room clamps each player's requested position to a plausible step per tick.
+// Generous (3x sprint) so jitter and batched packets never rubber-band an honest player, but a
+// scripted client can no longer cross the level in one message.
+export const MAX_MOVE_PER_TICK_FACTOR = 3;
 
 // Down / revive (2-player death rule).
 export const REVIVE_DIST = 1.5;

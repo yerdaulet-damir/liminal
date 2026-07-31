@@ -36,8 +36,12 @@ export function startHeartbeat(): void {
   }
 }
 
-export function setMonsterDistance(d: number): void {
-  dist = d;
+// One speaker pair, possibly two local players: the heartbeat follows whoever is closest.
+const seatDist = [Infinity, Infinity];
+
+export function setMonsterDistance(d: number, seat = 0): void {
+  seatDist[seat] = d;
+  dist = Math.min(seatDist[0]!, seatDist[1]!);
 }
 
 export function stopHeartbeat(): void {

@@ -1,0 +1,37 @@
+.couch {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  background: #000;
+}
+
+.couch__seat {
+  position: relative;
+  flex: 1 1 50%;
+  min-width: 0;
+  overflow: hidden;
+  /* A transformed element becomes the containing block for its position:fixed descendants.
+     That one line is what keeps each player's canvas, HUD and overlays inside their own half
+     instead of stacking on top of each other in the viewport. */
+  transform: translateZ(0);
+}
+
+.couch__seat + .couch__seat {
+  border-left: 1px solid #241f14;
+}
+
+.couch__tag {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  z-index: 30;
+  padding: 3px 8px;
+  border: 1px solid #3a3520;
+  border-radius: 6px;
+  background: rgba(10, 10, 8, 0.6);
+  color: #8a8266;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  user-select: none;
+}

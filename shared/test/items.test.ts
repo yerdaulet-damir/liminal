@@ -9,6 +9,24 @@ import { heardLoudness } from "../src/hearing.js";
 const maze = generateMaze(90210);
 
 describe("keys", () => {
+  it("prefers the tightest cells it can find, not the open floor", () => {
+    // The hint says "where the halls narrow", so most keys must actually land in cells with
+    // few exits. Braiding leaves almost no true dead ends, hence "tight", not "dead end".
+    let tight = 0;
+    let total = 0;
+    for (let i = 0; i < 60; i++) {
+      const m = generateMaze(1000 + i);
+      for (const k of placeKeys(1000 + i, m)) {
+        const idx = Math.floor(k.z / 4) * m.cols + Math.floor(k.x / 4);
+        const o = m.open[idx]!;
+        const exits = Number(o.n) + Number(o.e) + Number(o.s) + Number(o.w);
+        total++;
+        if (exits <= 2) tight++;
+      }
+    }
+    expect(tight / total).toBeGreaterThan(0.5);
+  });
+
   it("hides exactly KEYS_PER_LEVEL keys, deterministically, never on the spawn", () => {
     const a = placeKeys(90210, maze);
     expect(a).toHaveLength(KEYS_PER_LEVEL);

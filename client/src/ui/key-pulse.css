@@ -1,0 +1,35 @@
+.key-pulse {
+  position: fixed;
+  inset: 0;
+  z-index: 13;
+  display: grid;
+  place-content: center;
+  pointer-events: none;
+  animation: key-pulse-flash 1.6s ease-out both;
+}
+
+.key-pulse span {
+  color: #f7e7a0;
+  font: 700 clamp(2rem, 5vw, 3.2rem)/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 24px rgba(247, 231, 160, 0.35);
+  animation: key-pulse-rise 1.6s ease-out both;
+}
+
+/* a warm wash from the edges — you found something, the room noticed */
+@keyframes key-pulse-flash {
+  0% { background: radial-gradient(circle, transparent 40%, rgba(247, 231, 160, 0.22) 100%); }
+  100% { background: radial-gradient(circle, transparent 40%, rgba(247, 231, 160, 0) 100%); }
+}
+
+@keyframes key-pulse-rise {
+  0% { opacity: 0; transform: scale(0.85); }
+  18% { opacity: 1; transform: scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-14px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .key-pulse,
+  .key-pulse span { animation-duration: 1ms; }
+}

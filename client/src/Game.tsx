@@ -6,16 +6,24 @@ import { useRoom } from "./net/useRoom.js";
 import { ChatPanel } from "./ui/ChatPanel.js";
 import { Hud } from "./ui/Hud.js";
 import { EndOverlay } from "./ui/EndOverlay.js";
+import { Briefing } from "./ui/Briefing.js";
+import { NoiseMeter } from "./ui/NoiseMeter.js";
+import { KeyPulse } from "./ui/KeyPulse.js";
 import { Maze } from "./scene/Maze.js";
 import { Props } from "./scene/Props.js";
+import { Dressing } from "./scene/Dressing.js";
+import { DevLook } from "./scene/DevLook.js";
 import { Keys } from "./scene/Keys.js";
 import { Lighting } from "./scene/Lighting.js";
 import { Actors } from "./scene/Actors.js";
 import { Player } from "./player/Player.js";
 import "./game.css";
 
-export function Game({ name, roomId }: { name: string; roomId: string }) {
-  const room = useRoom(roomId, name);
+/** `seat` is set only in couch co-op (two players, one laptop) — it splits socket, input and HUD. */
+export function Game({ name, roomId, seat }: { name: string; roomId: string; seat?: 0 | 1 }) {
+  const couch = seat !== undefined;
+  const mySeat = seat ?? 0;
+  const room = useRoom(roomId, name, mySeat);
   const [falling, setFalling] = useState(false);
   const prevLevel = useRef(0);
 
@@ -50,11 +58,14 @@ export function Game({ name, roomId }: { name: string; roomId: string }) {
     return <div style={connectStyle}>entering the backrooms...</div>;
   }
 
+  // The room owns the level. `?level=N` is a dev PAINT flag only: it may re-theme the scene,
+  // but geometry and keys always come from the server's level, or pickups desync.
   const levelOverride = new URLSearchParams(location.search).get("level");
-  const level = levelOverride !== null ? Number(levelOverride) : room.level;
+  const level = room.level;
+  const artLevel = levelOverride !== null ? Number(levelOverride) : level;
   const seed = levelSeed(room.welcome.seed, level);
-  const dark = level === 1;
-  const pool = level >= 2;
+  const dark = artLevel === 1;
+  const pool = artLevel >= 2;
   const bg = pool ? "#cfe8f2" : dark ? "#0a0b0b" : "#cfc188";
   const levelName = pool ? "the poolrooms" : dark ? "the warehouse" : "the lobby";
 
@@ -63,15 +74,18 @@ export function Game({ name, roomId }: { name: string; roomId: string }) {
       <Canvas shadows camera={{ fov: 75, near: 0.1, far: 60 }} gl={{ preserveDrawingBuffer: true }}>
         <color attach="background" args={[bg]} />
         <Suspense fallback={null}>
-          <Lighting level={level} outage={room.outage} />
-          <Maze seed={seed} level={level} unlocked={room.keysLeft.length === 0} />
-          <Props seed={seed} level={level} />
+          <Lighting level={artLevel} outage={room.outage} />
+          <Maze seed={seed} level={artLevel} unlocked={room.keysLeft.length === 0} />
+          <Props seed={seed} level={artLevel} />
+          <Dressing seed={seed} level={artLevel} />
           <Keys seed={seed} room={room} />
-          <Actors room={room} />
+          <Actors room={room} seat={mySeat} />
+          <DevLook />
           <Player
             key={level}
             seed={seed}
-            level={level}
+            level={artLevel}
+            seat={mySeat}
             sendMove={room.sendMove}
             frozen={room.phase !== "playing" || room.selfDown || falling}
             roundEnded={room.phase !== "playing"}
@@ -79,8 +93,12 @@ export function Game({ name, roomId }: { name: string; roomId: string }) {
           />
         </Suspense>
       </Canvas>
-      <Hud room={room} />
-      <ChatPanel room={room} />
+      <Hud room={room} seat={mySeat} />
+      <NoiseMeter room={room} />
+      <KeyPulse room={room} />
+      <Briefing level={level} active={room.phase === "playing" && !falling} />
+      {/* on one laptop you just talk out loud — and one 'm' would open both panels */}
+      {!couch && <ChatPanel room={room} />}
       <EndOverlay room={room} />
       {falling && (
         <div style={voidStyle}>

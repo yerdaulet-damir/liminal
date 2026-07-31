@@ -54,7 +54,11 @@ export function setPoolMode(on: boolean): void {
 }
 
 /** Distance from the player to the noclip wall; called every frame from the scene. */
-export function setThinWallDistance(d: number): void {
+const wallSeat = [Infinity, Infinity];
+
+export function setThinWallDistance(dist: number, seat = 0): void {
+  wallSeat[seat] = dist;
+  const d = Math.min(wallSeat[0]!, wallSeat[1]!); // closest local player wins the speakers
   if (!cue || !ctx) return;
   const near = Math.max(0, 1 - d / 10); // audible from 10u out
   cue.gain.setTargetAtTime(near * 0.55, ctx.currentTime, 0.15);

@@ -5,7 +5,7 @@ import { LandingStory } from "./LandingStory.js";
 import "./lobby.css";
 
 interface LobbyProps {
-  onPlay: (name: string, roomId: string) => void;
+  onPlay: (name: string, roomId: string, couch?: boolean) => void;
 }
 
 function createRoomId(): string {
@@ -47,6 +47,9 @@ export function Lobby({ onPlay }: LobbyProps) {
     onPlay(name.trim() || "player", roomId);
   };
 
+  // Same room, no link to send: both players sit at this laptop and split the screen.
+  const playCouch = () => onPlay(name.trim() || "player", existingRoom ?? createRoomId(), true);
+
   return (
     <main className="landing">
       <section className="landing__hero" aria-labelledby="landing-title">
@@ -77,6 +80,7 @@ export function Lobby({ onPlay }: LobbyProps) {
           name={name}
           quickPlay={quickPlay}
           onNameChange={setName}
+          onPlayCouch={playCouch}
           onPlayPrivate={playPrivate}
         />
       </section>

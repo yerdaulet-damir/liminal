@@ -14,13 +14,13 @@ import {
   SPRINT_SPEED,
   TICK_MS,
   WALK_SPEED,
-  generateMaze,
-  placeProps,
   pushOutOfCircles,
   resolveMove,
 } from "@liminal/shared";
 import { setThinWallDistance } from "../audio/ambience.js";
-import { flashlight, resetFlashlight } from "./flashlight.js";
+import { levelWorld } from "../scene/levelWorld.js";
+import { flashlightFor, resetFlashlight } from "./flashlight.js";
+import { bindingFor, readSeatInput, TURN_RATE } from "./inputScheme.js";
 import { micLoudness } from "../audio/mic.js";
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -33,6 +33,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 export function Player({
   seed,
   level = 0,
+  seat = 0,
   sendMove,
   frozen = false,
   roundEnded = false,
@@ -40,6 +41,8 @@ export function Player({
 }: {
   seed: number;
   level?: number;
+  /** which local player this is on a shared laptop: 0 = mouse+WASD, 1 = arrows/gamepad */
+  seat?: number;
   /** the wall only hums once the keys are found */
   unlocked?: boolean;
   sendMove: (x: number, z: number, ry: number, lit?: boolean, mic?: number) => void;
@@ -49,27 +52,30 @@ export function Player({
   roundEnded?: boolean;
 }) {
   const { camera } = useThree();
-  const maze = useMemo(() => generateMaze(seed), [seed]);
-  const props = useMemo(() => placeProps(seed, maze, level), [seed, maze, level]);
+  const { maze, props } = useMemo(() => levelWorld(seed, level), [seed, level]);
+  const binding = bindingFor(seat);
+  const flashlight = flashlightFor(seat);
   const keys = useRef<Record<string, boolean>>({});
   const pos = useRef({ x: maze.start.x, z: maze.start.z });
+  const yaw = useRef(0);
   const sendAcc = useRef(0);
   const sprint = useRef({ budgetMs: SPRINT_MS, cdMs: 0 });
 
   useEffect(() => {
     camera.position.set(maze.start.x, EYE_HEIGHT, maze.start.z);
     camera.lookAt(maze.start.x + 1, EYE_HEIGHT, maze.start.z + 1); // face into the maze, not a wall
-    resetFlashlight(); // fresh battery each level (component remounts per level)
+    yaw.current = camera.rotation.y;
+    resetFlashlight(seat); // fresh battery each level (component remounts per level)
     const down = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
-      keys.current[e.key.toLowerCase()] = true;
-      if (e.key.toLowerCase() === "f" && level >= 1 && flashlight.batteryS > 0) {
+      keys.current[e.code] = true;
+      if (e.code === binding.torch && level >= 1 && flashlight.batteryS > 0) {
         flashlight.on = !flashlight.on;
       }
     };
     const up = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
-      keys.current[e.key.toLowerCase()] = false;
+      keys.current[e.code] = false;
     };
     const focus = (e: FocusEvent) => {
       if (isEditableTarget(e.target)) keys.current = {};
@@ -82,7 +88,7 @@ export function Player({
       window.removeEventListener("keyup", up);
       window.removeEventListener("focusin", focus);
     };
-  }, [camera, maze, level]);
+  }, [camera, maze, level, seat, binding, flashlight]);
 
   // On restart (round ended → playing) snap back to the spawn, mirroring the server's reset.
   const wasEnded = useRef(false);
@@ -94,9 +100,12 @@ export function Player({
       pos.current = { x: maze.start.x, z: maze.start.z };
       camera.position.set(maze.start.x, EYE_HEIGHT, maze.start.z);
     }
-    const k = keys.current;
-    const fwd = (k["w"] ? 1 : 0) - (k["s"] ? 1 : 0);
-    const strafe = (k["d"] ? 1 : 0) - (k["a"] ? 1 : 0);
+    const input = readSeatInput(seat, keys.current);
+    // seats without a mouse turn the body with their own keys/stick; the mouse owns yaw otherwise
+    if (binding.tank && input.turn !== 0) {
+      yaw.current += input.turn * TURN_RATE * Math.min(dt, 0.05);
+      camera.rotation.set(0, yaw.current, 0);
+    }
 
     const dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
@@ -105,16 +114,16 @@ export function Player({
     const right = new THREE.Vector3(-dir.z, 0, dir.x); // cross(dir, up) — D strafes right
 
     const move = new THREE.Vector3()
-      .addScaledVector(dir, fwd)
-      .addScaledVector(right, strafe);
+      .addScaledVector(dir, input.fwd)
+      .addScaledVector(right, input.strafe);
     if (move.lengthSq() > 0) move.normalize();
 
-    // crouch (C) = slow + silent to the monster; sprint (Shift) = 3 s budget, 5 s cooldown
+    // crouch = slow + silent to the monster; sprint = 3 s budget, 5 s cooldown
     const dtMs = dt * 1000;
     const sp = sprint.current;
     let speed = WALK_SPEED;
-    if (k["c"]) speed = CROUCH_SPEED;
-    else if (k["shift"] && sp.cdMs <= 0 && sp.budgetMs > 0 && move.lengthSq() > 0) {
+    if (input.crouch) speed = CROUCH_SPEED;
+    else if (input.sprint && sp.cdMs <= 0 && sp.budgetMs > 0 && move.lengthSq() > 0) {
       speed = SPRINT_SPEED;
       sp.budgetMs -= dtMs;
       if (sp.budgetMs <= 0) sp.cdMs = SPRINT_CD_MS;
@@ -139,6 +148,7 @@ export function Player({
     pos.current = next;
     setThinWallDistance(
       unlocked ? Math.hypot(next.x - maze.thinWall.x, next.z - maze.thinWall.z) : Infinity,
+      seat,
     );
     camera.position.set(next.x, EYE_HEIGHT, next.z);
 
@@ -157,15 +167,16 @@ export function Player({
 
   return (
     <>
-      <PointerLockControls />
-      <Beam />
+      {!binding.tank && <PointerLockControls />}
+      <Beam seat={seat} />
     </>
   );
 }
 
 // The flashlight beam — follows the camera, visible only when ON.
-function Beam() {
+function Beam({ seat }: { seat: number }) {
   const { camera } = useThree();
+  const flashlight = flashlightFor(seat);
   const light = useRef<THREE.SpotLight>(null);
   const target = useRef<THREE.Object3D>(null);
   const dir = useRef(new THREE.Vector3());

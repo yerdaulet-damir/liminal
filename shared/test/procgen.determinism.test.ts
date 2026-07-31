@@ -120,6 +120,16 @@ describe("maze determinism", () => {
     expect(placeProps(levelSeed(base, 2), generateMaze(levelSeed(base, 2)), 2)).toEqual([]);
   });
 
+  it("the exit is not always the same far corner (the maze must not be a diagonal)", () => {
+    // It used to be the single BFS-farthest cell, which landed in one corner 93% of the time.
+    const cells = new Set<string>();
+    for (let i = 0; i < 120; i++) {
+      const m = generateMaze(hashSeed(`spread-${i}`));
+      cells.add(`${Math.round(m.exit.x)},${Math.round(m.exit.z)}`);
+    }
+    expect(cells.size).toBeGreaterThan(20);
+  });
+
   it("rng sequence is stable for a fixed seed", () => {
     const r = makeRng(42);
     const seq = [r.next(), r.next(), r.next()];

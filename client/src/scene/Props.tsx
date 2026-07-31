@@ -4,7 +4,8 @@
 import { useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { CELL, generateMaze, makeRng, placeProps, type PropKind } from "@liminal/shared";
+import { CELL, makeRng, type PropKind } from "@liminal/shared";
+import { levelWorld } from "./levelWorld.js";
 
 const PROP_URL: Record<PropKind, string> = {
   chair: "/models/chair_A.gltf",
@@ -68,9 +69,9 @@ function Graffiti({ text, x, z, rotY }: { text: string; x: number; z: number; ro
 
 export function Props({ seed, level = 0 }: { seed: number; level?: number }) {
   const items = useMemo(() => {
-    const maze = generateMaze(seed);
+    const { maze, props: placed } = levelWorld(seed, level);
     // furniture layout comes from shared (same source as collision)
-    const props = placeProps(seed, maze, level).map((p) => ({ url: PROP_URL[p.kind], ...p }));
+    const props = placed.map((p) => ({ url: PROP_URL[p.kind], ...p }));
 
     // graffiti: on ~10 random full-length walls, offset off the surface
     const rng = makeRng(seed ^ 0x6ea111); // graffiti roll — separate stream from furniture
