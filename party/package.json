@@ -15,6 +15,6 @@
   "devDependencies": {
     "partykit": "^0.0.111",
     "typescript": "^5.6.3",
-    "vitest": "^2.1.8"
+    "vitest": "^4.1.11"
   }
 }
